@@ -268,7 +268,7 @@
   const $ = id => document.getElementById(id);
 
   // ==========================================
-  // AIRLINE-STYLE SCANNER AUDIO
+  // AIRPORT-STYLE SCANNER AUDIO
   // ==========================================
 
   function prepareAudio() {
@@ -295,66 +295,92 @@
     }
   }
 
+  // Smooth synthesized tone with a quick attack and natural fade.
   function playTone(
     frequency,
     startDelay,
     duration,
-    volume = 0.12
+    volume = 0.12,
+    wave = "sine",
+    endFrequency = null
   ) {
     const ctx = prepareAudio();
     if (!ctx) return;
 
     try {
       const start = ctx.currentTime + startDelay;
+      const end = start + duration;
 
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      oscillator.type = "sine";
+      oscillator.type = wave;
+
       oscillator.frequency.setValueAtTime(frequency, start);
 
-      gain.gain.setValueAtTime(0.001, start);
+      if (endFrequency !== null) {
+        oscillator.frequency.exponentialRampToValueAtTime(
+          Math.max(1, endFrequency),
+          end
+        );
+      }
 
-      gain.gain.linearRampToValueAtTime(
+      gain.gain.setValueAtTime(0.0001, start);
+
+      gain.gain.exponentialRampToValueAtTime(
         volume,
-        start + 0.012
+        start + 0.008
       );
 
       gain.gain.setValueAtTime(
         volume,
-        start + duration * 0.65
+        start + duration * 0.55
       );
 
       gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        start + duration
+        0.0001,
+        end
       );
 
       oscillator.connect(gain);
       gain.connect(ctx.destination);
 
       oscillator.start(start);
-      oscillator.stop(start + duration + 0.02);
+      oscillator.stop(end + 0.015);
     } catch (error) {
       console.warn("Could not play tone:", error);
     }
   }
 
-  // QR detected: short electronic reader chirp
+  // QR detected: a short, quiet electronic chirp.
   function playScanBeep() {
-    playTone(1250, 0, 0.075, 0.09);
+    playTone(1150, 0, 0.055, 0.055, "sine");
   }
 
-  // Accepted: two bright boarding-reader tones
+  // ACCEPTED:
+  // Deep "pit" first, followed by a lighter, higher "pit".
   function playSuccessBeep() {
-    playTone(1040, 0, 0.09, 0.12);
-    playTone(1560, 0.105, 0.14, 0.12);
+    const ctx = prepareAudio();
+    if (!ctx || ctx.state !== "running") return;
+
+    // First pit: deeper and slightly fuller.
+    playTone(620, 0, 0.105, 0.20, "sine");
+
+    // Second pit: brighter and lighter, airport-reader style.
+    playTone(960, 0.125, 0.125, 0.15, "sine");
   }
 
-  // Rejected: lower, two-part warning tone
+  // REJECTED:
+  // Two lower, descending buzzy tones.
   function playErrorBeep() {
-    playTone(420, 0, 0.18, 0.14);
-    playTone(330, 0.21, 0.24, 0.14);
+    const ctx = prepareAudio();
+    if (!ctx || ctx.state !== "running") return;
+
+    // First warning: low, short buzz falling in pitch.
+    playTone(390, 0, 0.16, 0.11, "sawtooth", 315);
+
+    // Second warning: lower and longer.
+    playTone(300, 0.205, 0.22, 0.10, "sawtooth", 205);
   }
 
   // ==========================================
@@ -550,7 +576,7 @@
 
     if (scannerRunning) return;
 
-    // User interaction enables browser audio on supported devices.
+    // User pressing Start Camera enables audio on supported browsers.
     prepareAudio();
 
     try {
@@ -571,7 +597,7 @@
 
           processingScan = true;
 
-          // First sound: QR has been detected.
+          // QR detection chirp.
           playScanBeep();
 
           validatePass(decodedText.trim());
@@ -635,7 +661,6 @@
 
     processingScan = true;
 
-    // Same scan confirmation for manual validation.
     playScanBeep();
 
     validatePass(value);
@@ -695,7 +720,6 @@
         `${result.name ? result.name + " — " : ""}${message}`;
 
       if (success) {
-        // Second sound: accepted boarding pass.
         playSuccessBeep();
 
         showResult(
@@ -707,7 +731,6 @@
         $("manualQr").value = "";
 
       } else {
-        // Second sound: rejected or invalid pass.
         playErrorBeep();
 
         showResult(
