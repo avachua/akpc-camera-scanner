@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AKPC Boarding Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9; color: #102b4e;
+    }
+    main { max-width: 520px; margin: auto; }
+    section {
+      background: white; padding: 20px;
+      margin-bottom: 16px; border-radius: 16px;
+      box-shadow: 0 4px 14px #0001;
+    }
+    h1 { margin-top: 0; font-size: 24px; }
+    p { line-height: 1.5; color: #64748b; }
+    input, button {
+      width: 100%; padding: 14px; margin-top: 10px;
+      border-radius: 10px; font-size: 16px;
+    }
+    input { border: 1px solid #cbd5e1; }
+    button {
+      border: 0; font-weight: bold; cursor: pointer;
+      background: #102b4e; color: white;
+    }
+    button.secondary { background: #e2e8f0; color: #102b4e; }
+    #reader { width: 100%; overflow: hidden; }
+    #result {
+      padding: 14px; margin-top: 14px;
+      background: #dbeafe; border-radius: 10px;
+      overflow-wrap: anywhere; white-space: pre-wrap;
+    }
+    .success { background: #dcfce7 !important; color: #166534; }
+    .error { background: #fee2e2 !important; color: #991b1b; }
+  </style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
+    <p>AKPC Boarding Gate QR Scanner</p>
+    <label for="eventId">Event ID</label>
+    <input id="eventId" placeholder="Enter the event ID">
+  </section>
+
+  <section>
+    <div id="reader"></div>
+    <button id="start" onclick="startScanner()">START CAMERA</button>
+    <button class="secondary" onclick="stopScanner()">STOP CAMERA</button>
+    <div id="result">Ready. Enter an event ID and start the camera.</div>
+  </section>
+</main>
+
+<script>
+  let scanner = null;
+  let running = false;
+  let processing = false;
+  let lastCode = "";
+
+  const result = document.getElementById("result");
+  const startButton = document.getElementById("start");
+
+  function show(message, type = "") {
+    result.className = type;
+    result.textContent = message;
+  }
+
+  async function startScanner() {
+    if (running) return;
+
+    if (!document.getElementById("eventId").value.trim()) {
+      show("Enter the event ID first.", "error");
+      return;
+    }
+
+    if (typeof Html5Qrcode === "undefined") {
+      show("Scanner library failed to load. Check your internet connection.", "error");
+      return;
+    }
+
+    startButton.disabled = true;
+
+    try {
+      if (!scanner) scanner = new Html5Qrcode("reader");
+
+      show("Requesting camera permission...");
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 240, height: 240 },
+          aspectRatio: 1
+        },
+        handleScan,
+        () => {}
+      );
+
+      running = true;
+      show("CAMERA READY\nPoint the camera at a boarding pass QR code.");
+    } catch (err) {
+      startButton.disabled = false;
+      show(
+        "CAMERA ERROR\n" + (err.message || String(err)) +
+        "\n\nOpen this website directly in Safari or Chrome and allow camera access.",
+        "error"
+      );
+    }
+  }
+
+  function handleScan(decodedText) {
+    if (processing || decodedText === lastCode) return;
+
+    processing = true;
+    lastCode = decodedText;
+
+    const eventId = document.getElementById("eventId").value.trim();
+
+    show(
+      "QR CODE DETECTED\nEvent: " + eventId +
+      "\n\nQR contents:\n" + decodedText +
+      "\n\nCamera test successful. Google Sheets validation is not connected yet.",
+      "success"
+    );
+
+    setTimeout(() => {
+      processing = false;
+      lastCode = "";
+    }, 2000);
+  }
+
+  async function stopScanner() {
+    if (scanner && running) {
+      try { await scanner.stop(); } catch (e) {}
+      try { scanner.clear(); } catch (e) {}
+    }
+
+    scanner = null;
+    running = false;
+    processing = false;
+    lastCode = "";
+    startButton.disabled = false;
+    show("Camera stopped. Press START CAMERA to scan again.");
+  }
+
+  window.addEventListener("pagehide", () => {
+    if (scanner && running) scanner.stop().catch(() => {});
+  });
+</script>
+</body>
+</html>
