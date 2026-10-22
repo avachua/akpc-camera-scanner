@@ -204,7 +204,28 @@
     <h2 style="margin-top:0">Camera Scanner</h2>
 
     <div class="hint">
-      Select an active event, start the camera, and scan a member QR pass.
+      Select an active event and your agent code before scanning.
+    </div>
+
+    <!-- AGENT CODE DROPDOWN -->
+    <label class="label" for="agentCode" style="margin-top:16px">
+      AGENT CODE
+    </label>
+
+    <select id="agentCode" required>
+      <option value="">Loading active agent codes…</option>
+    </select>
+
+    <button
+      id="refreshAgentsBtn"
+      class="secondary"
+      type="button"
+      onclick="loadAgentCodes()">
+      REFRESH AGENT CODES
+    </button>
+
+    <div id="agentStatus" class="hint" role="status">
+      Connecting to the AGENTS sheet…
     </div>
 
     <div class="actions" style="margin-top:12px">
@@ -226,7 +247,7 @@
 
     <div id="scanResult" class="result neutral" role="status">
       <strong>READY</strong>
-      Select a live event to begin.
+      Select an event and agent code to begin.
     </div>
   </section>
 
@@ -254,7 +275,6 @@
 </main>
 
 <script>
-  // YOUR DEPLOYED APPS SCRIPT WEB APP
   const API_URL =
     "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
 
@@ -268,7 +288,7 @@
   const $ = id => document.getElementById(id);
 
   // ==========================================
-  // AIRPORT-STYLE SCANNER AUDIO
+  // AUDIO
   // ==========================================
 
   function prepareAudio() {
@@ -283,8 +303,8 @@
       }
 
       if (audioContext.state === "suspended") {
-        audioContext.resume().catch(err =>
-          console.warn("Audio resume failed:", err)
+        audioContext.resume().catch(error =>
+          console.warn("Audio resume failed:", error)
         );
       }
 
@@ -295,7 +315,6 @@
     }
   }
 
-  // Smooth synthesized tone with a quick attack and natural fade.
   function playTone(
     frequency,
     startDelay,
@@ -315,7 +334,6 @@
       const gain = ctx.createGain();
 
       oscillator.type = wave;
-
       oscillator.frequency.setValueAtTime(frequency, start);
 
       if (endFrequency !== null) {
@@ -326,21 +344,13 @@
       }
 
       gain.gain.setValueAtTime(0.0001, start);
-
       gain.gain.exponentialRampToValueAtTime(
-        volume,
-        start + 0.008
+        volume, start + 0.008
       );
-
       gain.gain.setValueAtTime(
-        volume,
-        start + duration * 0.55
+        volume, start + duration * 0.55
       );
-
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        end
-      );
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
       oscillator.connect(gain);
       gain.connect(ctx.destination);
@@ -352,34 +362,20 @@
     }
   }
 
-  // QR detected: a short, quiet electronic chirp.
+  // Short scan detection chirp.
   function playScanBeep() {
     playTone(1150, 0, 0.055, 0.055, "sine");
   }
 
-  // ACCEPTED:
-  // Deep "pit" first, followed by a lighter, higher "pit".
+  // Boarding accepted: two rising-style confirmation pitches.
   function playSuccessBeep() {
-    const ctx = prepareAudio();
-    if (!ctx || ctx.state !== "running") return;
-
-    // First pit: deeper and slightly fuller.
     playTone(620, 0, 0.105, 0.20, "sine");
-
-    // Second pit: brighter and lighter, airport-reader style.
     playTone(960, 0.125, 0.125, 0.15, "sine");
   }
 
-  // REJECTED:
-  // Two lower, descending buzzy tones.
+  // Boarding rejected: two descending warning tones.
   function playErrorBeep() {
-    const ctx = prepareAudio();
-    if (!ctx || ctx.state !== "running") return;
-
-    // First warning: low, short buzz falling in pitch.
     playTone(390, 0, 0.16, 0.11, "sawtooth", 315);
-
-    // Second warning: lower and longer.
     playTone(300, 0.205, 0.22, 0.10, "sawtooth", 205);
   }
 
@@ -389,7 +385,6 @@
 
   function showResult(ok, title, message) {
     const box = $("scanResult");
-
     box.className = "result " + (ok ? "ok" : "bad");
 
     const heading = document.createElement("strong");
@@ -442,19 +437,17 @@
 
       timer = setTimeout(() => {
         if (finished) return;
-
         finished = true;
         cleanup();
 
         reject(new Error(
           "Apps Script did not respond. Check deployment access, " +
-          "the /exec URL, and the JSONP handlers in Code.gs."
+          "the /exec URL, and JSONP handlers in Code.gs."
         ));
       }, timeoutMs);
 
       window[callback] = data => {
         if (finished) return;
-
         finished = true;
         cleanup();
         resolve(data);
@@ -467,7 +460,6 @@
 
       script.onerror = () => {
         if (finished) return;
-
         finished = true;
         cleanup();
 
@@ -483,7 +475,7 @@
   }
 
   // ==========================================
-  // LIVE EVENTS
+  // LOAD LIVE EVENTS
   // ==========================================
 
   async function loadEvents() {
@@ -515,10 +507,10 @@
       );
 
       events.forEach(event => {
-        const label =
-          `${event.name} — ${event.date || "Date not set"} (${event.id})`;
-
-        select.add(new Option(label, event.id));
+        select.add(new Option(
+          `${event.name} — ${event.date || "Date not set"} (${event.id})`,
+          event.id
+        ));
       });
 
       if (events.some(event => event.id === previous)) {
@@ -543,6 +535,95 @@
   }
 
   // ==========================================
+  // LOAD ACTIVE AGENT CODES FROM GOOGLE SHEETS
+  // ==========================================
+
+  async function loadAgentCodes() {
+    const select = $("agentCode");
+    const status = $("agentStatus");
+
+    $("refreshAgentsBtn").disabled = true;
+    status.textContent = "Loading active agent codes…";
+
+    const previous = select.value;
+
+    select.replaceChildren(
+      new Option("Loading active agent codes…", "")
+    );
+
+    try {
+      const agents = await jsonp({ api: "agents" });
+
+      if (!Array.isArray(agents)) {
+        throw new Error(
+          agents && agents.message
+            ? agents.message
+            : "Unexpected agent list response."
+        );
+      }
+
+      select.replaceChildren(
+        new Option("Select your agent code…", "")
+      );
+
+      agents.forEach(agent => {
+        if (!agent || !agent.code) return;
+
+        const label = agent.name
+          ? `${agent.code} — ${agent.name}`
+          : agent.code;
+
+        select.add(new Option(label, agent.code));
+      });
+
+      if (agents.some(agent => agent.code === previous)) {
+        select.value = previous;
+      }
+
+      status.textContent = agents.length
+        ? `${agents.length} active agent(s) loaded from the AGENTS sheet.`
+        : "No active agents found. Add agents to the AGENTS sheet.";
+
+    } catch (error) {
+      select.replaceChildren(
+        new Option("Unable to load agent codes", "")
+      );
+
+      status.textContent =
+        error.message || String(error);
+
+    } finally {
+      $("refreshAgentsBtn").disabled = false;
+    }
+  }
+
+  // ==========================================
+  // REQUIRED SELECTIONS
+  // ==========================================
+
+  function selectionsReady() {
+    if (!$("eventSelect").value) {
+      showResult(
+        false,
+        "NO EVENT SELECTED",
+        "Select a live event before scanning."
+      );
+      return false;
+    }
+
+    if (!$("agentCode").value) {
+      showResult(
+        false,
+        "AGENT CODE REQUIRED",
+        "Select your agent code before scanning."
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ==========================================
   // CAMERA
   // ==========================================
 
@@ -556,14 +637,7 @@
       return;
     }
 
-    if (!$("eventSelect").value) {
-      showResult(
-        false,
-        "NO EVENT SELECTED",
-        "Select a live event before scanning."
-      );
-      return;
-    }
+    if (!selectionsReady()) return;
 
     if (typeof Html5Qrcode === "undefined") {
       showResult(
@@ -576,7 +650,6 @@
 
     if (scannerRunning) return;
 
-    // User pressing Start Camera enables audio on supported browsers.
     prepareAudio();
 
     try {
@@ -596,10 +669,7 @@
           if (processingScan) return;
 
           processingScan = true;
-
-          // QR detection chirp.
           playScanBeep();
-
           validatePass(decodedText.trim());
         },
         () => {}
@@ -658,11 +728,10 @@
     }
 
     if (processingScan) return;
+    if (!selectionsReady()) return;
 
     processingScan = true;
-
     playScanBeep();
-
     validatePass(value);
   }
 
@@ -671,30 +740,26 @@
   // ==========================================
 
   async function validatePass(qrText) {
-    const eventId = $("eventSelect").value;
-
-    if (!eventId) {
-      showResult(
-        false,
-        "NO EVENT SELECTED",
-        "Select a live event before scanning."
-      );
-
+    if (!selectionsReady()) {
       releaseScanLock();
       return;
     }
 
+    const eventId = $("eventSelect").value;
+    const agentCode = $("agentCode").value;
+
     showResult(
       true,
       "CHECKING PASS…",
-      "Validating against the selected event."
+      `Validating for the selected event. Agent: ${agentCode}`
     );
 
     try {
       const result = await jsonp({
         api: "validateBoarding",
         qr: qrText,
-        eventId: eventId
+        eventId: eventId,
+        agentCode: agentCode
       });
 
       if (!result || typeof result !== "object") {
@@ -725,7 +790,7 @@
         showResult(
           true,
           "BOARDING ACCEPTED",
-          details
+          details + `\nAgent Code: ${agentCode}`
         );
 
         $("manualQr").value = "";
@@ -757,7 +822,6 @@
   function releaseScanLock() {
     clearTimeout(scanReleaseTimer);
 
-    // Prevent the same QR from triggering repeatedly.
     scanReleaseTimer = setTimeout(() => {
       processingScan = false;
     }, 900);
@@ -777,8 +841,16 @@
     }
   });
 
-  // Load active events when the page opens.
+  $("agentCode").addEventListener("change", () => {
+    if ($("agentCode").value) {
+      $("agentStatus").textContent =
+        "Selected agent: " + $("agentCode").value;
+    }
+  });
+
+  // LOAD BOTH LISTS WHEN THE PAGE OPENS
   loadEvents();
+  loadAgentCodes();
 </script>
 
 </body>
