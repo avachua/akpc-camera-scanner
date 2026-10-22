@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AKPC Boarding Gate QR Scanner</title>
@@ -10,848 +11,835 @@
 
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0b1220;
-      --panel: #121d30;
-      --line: #2a3a53;
-      --gold: #e8bd58;
-      --muted: #aab8ca;
-      --green: #1f9d68;
-      --red: #c84454;
+      --navy: #071426;
+      --panel: #101f35;
+      --gold: #d7b56d;
+      --text: #f4f6fa;
+      --muted: #aab7c9;
+      --green: #31d49a;
+      --red: #ff626d;
+      --border: #283a52;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 22px;
-      background: var(--bg);
-      color: #f5f7fb;
-      font: 16px/1.45 Arial, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
     }
 
-    main {
-      max-width: 760px;
-      margin: auto;
+    header {
+      text-align: center;
+      padding: 24px 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #09182b;
     }
 
     .brand {
-      text-align: center;
-      margin-bottom: 22px;
-    }
-
-    .brand h1 {
-      font-size: clamp(22px, 5vw, 34px);
-      letter-spacing: .04em;
-      margin: 0 0 6px;
-    }
-
-    .brand p {
-      margin: 0;
       color: var(--gold);
-      font-weight: bold;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 20px;
-      margin: 14px 0;
-    }
-
-    .label {
-      display: block;
+      font-size: 12px;
+      letter-spacing: 4px;
       font-weight: bold;
       margin-bottom: 8px;
     }
 
-    .hint, .muted {
+    h1 {
+      font-size: clamp(22px, 5vw, 34px);
+      margin: 0;
+      letter-spacing: 1px;
+    }
+
+    header p {
       color: var(--muted);
-      font-size: 14px;
+      margin: 10px 0 0;
+      font-size: 13px;
+    }
+
+    main {
+      width: min(100% - 24px, 850px);
+      margin: 22px auto 40px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin: 0 0 15px;
+      text-transform: uppercase;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
     }
 
     select, input, button {
       width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
       font: inherit;
-      border-radius: 10px;
-      padding: 12px;
-      border: 1px solid var(--line);
     }
 
     select, input {
-      background: #0c1627;
-      color: #fff;
-      margin: 7px 0 12px;
+      background: #081528;
+      color: white;
+      border: 1px solid #354862;
+      padding: 12px;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--gold);
+    }
+
+    .field { margin-bottom: 15px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
     }
 
     button {
-      cursor: pointer;
-      font-weight: bold;
-      background: var(--gold);
-      color: #161b24;
       border: 0;
-      margin: 4px 0;
+      cursor: pointer;
+      padding: 12px 16px;
+      font-weight: bold;
+      transition: filter .15s ease;
     }
 
-    button.secondary {
-      background: #273750;
-      color: #fff;
-      border: 1px solid #3b4d68;
+    button:hover { filter: brightness(1.12); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .primary {
+      background: var(--gold);
+      color: #101827;
     }
 
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
+    .secondary {
+      background: #263b56;
+      color: white;
+      border: 1px solid #405773;
+    }
+
+    .stop {
+      background: #51252e;
+      color: white;
+      border: 1px solid #873a46;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
     }
 
     #reader {
       width: 100%;
-      max-width: 520px;
-      margin: 14px auto 0;
       overflow: hidden;
-      border-radius: 12px;
+      border-radius: 10px;
+      background: #050b13;
     }
 
     #reader video {
-      border-radius: 12px;
+      border-radius: 10px;
     }
 
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    .scanner-note {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.6;
+      margin: 12px 0 0;
     }
 
-    .result {
+    .status {
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
-      margin-top: 14px;
-      white-space: pre-wrap;
+      padding: 20px 16px;
+      text-align: center;
+      background: #091629;
+      margin-top: 16px;
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    #resultTitle {
+      font-size: clamp(21px, 5vw, 29px);
+      font-weight: bold;
       overflow-wrap: anywhere;
     }
 
-    .ok {
-      background: #103b2d;
-      border: 1px solid var(--green);
+    #resultMessage {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-top: 8px;
+      overflow-wrap: anywhere;
     }
 
-    .bad {
-      background: #3a1821;
-      border: 1px solid var(--red);
+    .status.success {
+      border-color: #238f70;
+      background: #092a29;
     }
 
-    .neutral {
-      background: #1b2a40;
-      border: 1px solid var(--line);
+    .status.success #resultTitle { color: var(--green); }
+
+    .status.error {
+      border-color: #94424b;
+      background: #2b1721;
     }
 
-    .result strong {
-      display: block;
-      font-size: 18px;
-      margin-bottom: 4px;
+    .status.error #resultTitle { color: var(--red); }
+
+    .status.warning {
+      border-color: #96753c;
+      background: #2c2619;
     }
 
-    .foot {
-      text-align: center;
+    .status.warning #resultTitle { color: var(--gold); }
+
+    .sound-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sound-row p {
+      margin: 4px 0 0;
       color: var(--muted);
       font-size: 12px;
-      margin-top: 20px;
+      line-height: 1.5;
     }
 
-    @media(max-width: 480px) {
-      body { padding: 14px; }
-      .panel { padding: 15px; }
-      .actions { grid-template-columns: 1fr; }
+    .sound-button {
+      width: auto;
+      min-width: 120px;
+      white-space: nowrap;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #72839a;
+      padding: 12px;
+    }
+
+    @media (max-width: 520px) {
+      .grid { grid-template-columns: 1fr; gap: 0; }
+      .panel { padding: 14px; }
+      .sound-row { align-items: flex-start; flex-direction: column; }
+      .sound-button { width: 100%; }
     }
   </style>
 </head>
 
 <body>
+<header>
+  <div class="brand">ATENEO KNIGHTS</div>
+  <h1>Pickleball Club</h1>
+  <p>Boarding Gate QR Scanner</p>
+</header>
+
 <main>
-
-  <header class="brand">
-    <h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
-    <p>AKPC Boarding Gate QR Scanner</p>
-  </header>
-
   <section class="panel">
-    <label class="label" for="eventSelect">LIVE EVENTS</label>
+    <h2 class="section-title">Boarding Information</h2>
 
-    <div class="hint">
-      Events are loaded from the Google Sheets EVENTS tab.
-      Only events marked ACTIVE appear.
+    <div class="field">
+      <label for="eventSelect">Select Event</label>
+      <select id="eventSelect">
+        <option value="">Loading events...</option>
+      </select>
     </div>
 
-    <select id="eventSelect">
-      <option value="">Loading live events…</option>
-    </select>
+    <div class="field">
+      <label for="agentSelect">Boarding Agent</label>
+      <select id="agentSelect">
+        <option value="">Loading agents...</option>
+      </select>
+    </div>
 
-    <button
-      id="refreshBtn"
-      class="secondary"
-      type="button"
-      onclick="loadEvents()">
-      REFRESH EVENTS
+    <button class="secondary" id="refreshBtn" type="button">
+      Refresh Events and Agents
     </button>
-
-    <div id="eventStatus" class="hint" role="status">
-      Connecting to the event list…
-    </div>
   </section>
 
   <section class="panel">
-    <h2 style="margin-top:0">Camera Scanner</h2>
-
-    <div class="hint">
-      Select an active event and your agent code before scanning.
-    </div>
-
-    <!-- AGENT CODE DROPDOWN -->
-    <label class="label" for="agentCode" style="margin-top:16px">
-      AGENT CODE
-    </label>
-
-    <select id="agentCode" required>
-      <option value="">Loading active agent codes…</option>
-    </select>
-
-    <button
-      id="refreshAgentsBtn"
-      class="secondary"
-      type="button"
-      onclick="loadAgentCodes()">
-      REFRESH AGENT CODES
-    </button>
-
-    <div id="agentStatus" class="hint" role="status">
-      Connecting to the AGENTS sheet…
-    </div>
-
-    <div class="actions" style="margin-top:12px">
-      <button id="startBtn" type="button" onclick="startCamera()">
-        START CAMERA
-      </button>
-
-      <button
-        id="stopBtn"
-        class="secondary"
-        type="button"
-        onclick="stopCamera()"
-        disabled>
-        STOP CAMERA
-      </button>
-    </div>
+    <h2 class="section-title">Boarding Gate Scanner</h2>
 
     <div id="reader"></div>
 
-    <div id="scanResult" class="result neutral" role="status">
-      <strong>READY</strong>
-      Select an event and agent code to begin.
+    <div class="button-row">
+      <button class="primary" id="startBtn" type="button">
+        Start Camera
+      </button>
+      <button class="stop" id="stopBtn" type="button" disabled>
+        Stop Camera
+      </button>
     </div>
+
+    <p class="scanner-note">
+      Allow camera access when prompted. Position the member's QR code
+      inside the camera frame. The scanner checks the selected event.
+    </p>
   </section>
 
   <section class="panel">
-    <label class="label" for="manualQr">Manual QR Fallback</label>
+    <h2 class="section-title">Manual QR Entry</h2>
 
-    <div class="hint">
-      If the camera cannot read the pass, paste its QR contents here.
-    </div>
-
-    <input
-      id="manualQr"
-      type="text"
-      placeholder="Paste QR code contents">
-
-    <button type="button" onclick="manualValidate()">
-      VALIDATE PASS
-    </button>
+    <form id="manualForm">
+      <div class="field">
+        <label for="qrInput">QR Code Content</label>
+        <input
+          id="qrInput"
+          type="text"
+          placeholder="Paste or enter the boarding QR code"
+          autocomplete="off"
+          required
+        >
+      </div>
+      <button class="primary" id="manualBtn" type="submit">
+        Validate Boarding Pass
+      </button>
+    </form>
   </section>
 
-  <div class="foot">
-    AKPC Check-In &amp; Boarding • Official Scanner
-  </div>
+  <section class="panel">
+    <h2 class="section-title">Scanner Audio</h2>
+    <div class="sound-row">
+      <div>
+        <strong>Airport Gate Sound Profile</strong>
+        <p>
+          Crisp scan chirp, double-tone acceptance, and distinct
+          rejection alerts. Tap the button to enable and test audio.
+        </p>
+      </div>
+      <button class="secondary sound-button" id="soundBtn" type="button">
+        Enable / Test Sound
+      </button>
+    </div>
+  </section>
 
+  <section id="statusBox" class="status" aria-live="polite">
+    <div class="status-label">Gate Status</div>
+    <div id="resultTitle">SYSTEM READY</div>
+    <div id="resultMessage">Select an event and boarding agent to begin.</div>
+  </section>
+
+  <div class="footer">
+    AKPC • Ateneo Knights Pickleball Club
+  </div>
 </main>
 
 <script>
+  // Keep this URL matched to your deployed Apps Script web app.
   const API_URL =
     "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
 
-  let qrScanner = null;
-  let scannerRunning = false;
-  let processingScan = false;
-  let callbackCounter = 0;
-  let audioContext = null;
-  let scanReleaseTimer = null;
-
   const $ = id => document.getElementById(id);
 
-  // ==========================================
-  // AUDIO
-  // ==========================================
+  let scanner = null;
+  let cameraRunning = false;
+  let requestBusy = false;
+  let lastScannedText = "";
+  let lastScannedAt = 0;
+  let audioContext = null;
+  let audioEnabled = false;
 
-  function prepareAudio() {
-    try {
-      const AudioContextClass =
-        window.AudioContext || window.webkitAudioContext;
+  // -------------------- AIRPORT-STYLE AUDIO --------------------
 
-      if (!AudioContextClass) return null;
+  async function enableAudio() {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
 
-      if (!audioContext) {
-        audioContext = new AudioContextClass();
-      }
-
-      if (audioContext.state === "suspended") {
-        audioContext.resume().catch(error =>
-          console.warn("Audio resume failed:", error)
-        );
-      }
-
-      return audioContext;
-    } catch (error) {
-      console.warn("Audio unavailable:", error);
-      return null;
+    if (!AudioContextClass) {
+      showStatus("AUDIO UNAVAILABLE",
+        "This browser does not support Web Audio.", "warning");
+      return false;
     }
-  }
 
-  function playTone(
-    frequency,
-    startDelay,
-    duration,
-    volume = 0.12,
-    wave = "sine",
-    endFrequency = null
-  ) {
-    const ctx = prepareAudio();
-    if (!ctx) return;
+    if (!audioContext) audioContext = new AudioContextClass();
 
-    try {
-      const start = ctx.currentTime + startDelay;
-      const end = start + duration;
-
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      oscillator.type = wave;
-      oscillator.frequency.setValueAtTime(frequency, start);
-
-      if (endFrequency !== null) {
-        oscillator.frequency.exponentialRampToValueAtTime(
-          Math.max(1, endFrequency),
-          end
-        );
-      }
-
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(
-        volume, start + 0.008
-      );
-      gain.gain.setValueAtTime(
-        volume, start + duration * 0.55
-      );
-      gain.gain.exponentialRampToValueAtTime(0.0001, end);
-
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-
-      oscillator.start(start);
-      oscillator.stop(end + 0.015);
-    } catch (error) {
-      console.warn("Could not play tone:", error);
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
     }
+
+    audioEnabled = true;
+    return true;
   }
 
-  // Short scan detection chirp.
-  function playScanBeep() {
-    playTone(1150, 0, 0.055, 0.055, "sine");
-  }
+  function tone(frequency, start, duration, volume, type = "sine") {
+    if (!audioEnabled || !audioContext) return;
 
-  // Boarding accepted: two rising-style confirmation pitches.
-  function playSuccessBeep() {
-    playTone(620, 0, 0.105, 0.20, "sine");
-    playTone(960, 0.125, 0.125, 0.15, "sine");
-  }
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const when = audioContext.currentTime + start;
 
-  // Boarding rejected: two descending warning tones.
-  function playErrorBeep() {
-    playTone(390, 0, 0.16, 0.11, "sawtooth", 315);
-    playTone(300, 0.205, 0.22, 0.10, "sawtooth", 205);
-  }
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, when);
 
-  // ==========================================
-  // RESULT DISPLAY
-  // ==========================================
-
-  function showResult(ok, title, message) {
-    const box = $("scanResult");
-    box.className = "result " + (ok ? "ok" : "bad");
-
-    const heading = document.createElement("strong");
-    heading.textContent = title;
-
-    box.replaceChildren(
-      heading,
-      document.createTextNode(message || "")
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(0.0002, volume), when + 0.008
     );
+    gain.gain.setValueAtTime(
+      Math.max(0.0002, volume), when + Math.max(0.01, duration - 0.025)
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001, when + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(when);
+    oscillator.stop(when + duration + 0.02);
   }
 
-  // ==========================================
-  // APPS SCRIPT JSONP CONNECTION
-  // ==========================================
-
-  function apiReady() {
-    return API_URL.startsWith("https://script.google.com/") &&
-      API_URL.endsWith("/exec");
+  function playScanSound() {
+    // Short, precise barcode-reader acknowledgement.
+    tone(1850, 0, 0.045, 0.045, "sine");
   }
 
-  function jsonp(params, timeoutMs = 18000) {
-    return new Promise((resolve, reject) => {
-      if (!apiReady()) {
-        reject(new Error(
-          "Check the Apps Script Web App URL in index.html."
-        ));
-        return;
+  function playSuccessSound() {
+    // Two clean confirmation tones, without an arcade-style sweep.
+    tone(880, 0, 0.085, 0.075, "sine");
+    tone(1174.66, 0.105, 0.115, 0.075, "sine");
+  }
+
+  function playRejectedSound() {
+    // A lower, restrained two-tone rejection.
+    tone(392, 0, 0.12, 0.065, "triangle");
+    tone(311.13, 0.16, 0.16, 0.065, "triangle");
+  }
+
+  function playAlreadyBoardedSound() {
+    // Distinct three-pulse alert for duplicate boarding attempts.
+    tone(587.33, 0, 0.075, 0.06, "sine");
+    tone(587.33, 0.12, 0.075, 0.06, "sine");
+    tone(440, 0.24, 0.14, 0.065, "sine");
+  }
+
+  $("soundBtn").addEventListener("click", async () => {
+    try {
+      const enabled = await enableAudio();
+      if (!enabled) return;
+
+      playScanSound();
+      setTimeout(playSuccessSound, 180);
+
+      $("soundBtn").textContent = "Sound Enabled";
+      showStatus("AUDIO READY",
+        "Airport-style scanner audio is enabled.", "success");
+    } catch (error) {
+      showStatus("AUDIO ERROR", error.message, "error");
+    }
+  });
+
+  // -------------------- STATUS DISPLAY --------------------
+
+  function showStatus(title, message, type = "") {
+    $("statusBox").className = "status" + (type ? " " + type : "");
+    $("resultTitle").textContent = title;
+    $("resultMessage").textContent = message || "";
+  }
+
+  function valueOf(obj, keys) {
+    for (const key of keys) {
+      if (obj && obj[key] !== undefined && obj[key] !== null) {
+        return obj[key];
       }
+    }
+    return "";
+  }
 
-      const callback =
-        "akpcJsonp_" + Date.now() + "_" + (++callbackCounter);
+  function isSuccess(result) {
+    return result &&
+      (result.success === true ||
+       result.ok === true ||
+       result.status === "success");
+  }
+
+  // -------------------- JSONP API --------------------
+
+  function jsonp(params) {
+    return new Promise((resolve, reject) => {
+      const callbackName =
+        "akpc_cb_" + Date.now() + "_" +
+        Math.random().toString(36).slice(2);
 
       const script = document.createElement("script");
+      const query = new URLSearchParams({
+        ...params,
+        callback: callbackName
+      });
+
       let finished = false;
-      let timer;
 
-      function cleanup() {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
+      const cleanup = () => {
+        if (script.parentNode) script.parentNode.removeChild(script);
+        try { delete window[callbackName]; }
+        catch (_) { window[callbackName] = undefined; }
+        clearTimeout(timeout);
+      };
 
-        try {
-          delete window[callback];
-        } catch (_) {
-          window[callback] = undefined;
-        }
-
-        clearTimeout(timer);
-      }
-
-      timer = setTimeout(() => {
+      const timeout = setTimeout(() => {
         if (finished) return;
         finished = true;
         cleanup();
+        reject(new Error("The server did not respond. Check your Apps Script deployment."));
+      }, 20000);
 
-        reject(new Error(
-          "Apps Script did not respond. Check deployment access, " +
-          "the /exec URL, and JSONP handlers in Code.gs."
-        ));
-      }, timeoutMs);
-
-      window[callback] = data => {
+      window[callbackName] = data => {
         if (finished) return;
         finished = true;
         cleanup();
         resolve(data);
       };
 
-      const query = new URLSearchParams({
-        ...params,
-        callback
-      }).toString();
-
       script.onerror = () => {
         if (finished) return;
         finished = true;
         cleanup();
-
-        reject(new Error(
-          "Could not contact Apps Script. Check the Web App URL " +
-          "and deployment permissions."
-        ));
+        reject(new Error("Could not connect to Apps Script."));
       };
 
-      script.src = API_URL + "?" + query;
-      document.head.appendChild(script);
+      script.src = API_URL + "?" + query.toString();
+      document.body.appendChild(script);
     });
   }
 
-  // ==========================================
-  // LOAD LIVE EVENTS
-  // ==========================================
+  // -------------------- LOAD EVENTS AND AGENTS --------------------
 
   async function loadEvents() {
     const select = $("eventSelect");
-
-    $("refreshBtn").disabled = true;
-    $("eventStatus").textContent =
-      "Loading events from Google Sheets…";
-
-    select.replaceChildren(
-      new Option("Loading live events…", "")
-    );
+    select.innerHTML = '<option value="">Loading events...</option>';
 
     try {
-      const events = await jsonp({ api: "events" });
+      const result = await jsonp({ api: "events" });
+
+      if (result && result.success === false) {
+        throw new Error(result.message || "Unable to load events.");
+      }
+
+      const events = Array.isArray(result)
+        ? result
+        : valueOf(result, ["events", "data", "results"]);
 
       if (!Array.isArray(events)) {
-        throw new Error(
-          events && events.message
-            ? events.message
-            : "Unexpected event list response."
-        );
+        throw new Error("Unexpected event response from Apps Script.");
       }
 
-      const previous = select.value;
-
-      select.replaceChildren(
-        new Option("Select a live event…", "")
-      );
+      select.innerHTML = '<option value="">Select an event</option>';
 
       events.forEach(event => {
-        select.add(new Option(
-          `${event.name} — ${event.date || "Date not set"} (${event.id})`,
-          event.id
-        ));
+        const id = valueOf(event, ["eventId", "eventID", "id", "Event ID"]);
+        const name = valueOf(event, ["eventName", "name", "Event Name"]);
+        const status = String(
+          valueOf(event, ["status", "Status"]) || ""
+        ).toLowerCase();
+
+        if (!id || status === "inactive" || status === "cancelled" ||
+            status === "canceled" || status === "deleted") return;
+
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name ? String(name) : String(id);
+        select.appendChild(option);
       });
 
-      if (events.some(event => event.id === previous)) {
-        select.value = previous;
+      if (select.options.length === 1) {
+        select.options[0].textContent = "No active events available";
+      }
+    } catch (error) {
+      select.innerHTML = '<option value="">Could not load events</option>';
+      console.error(error);
+      showStatus("EVENT LOAD ERROR", error.message, "error");
+    }
+  }
+
+  async function loadAgents() {
+    const select = $("agentSelect");
+    select.innerHTML = '<option value="">Loading agents...</option>';
+
+    try {
+      const result = await jsonp({ api: "agents" });
+
+      if (result && result.success === false) {
+        throw new Error(result.message || "Unable to load agents.");
       }
 
-      $("eventStatus").textContent = events.length
-        ? `${events.length} active event(s) loaded.`
-        : "No ACTIVE events found. Check the EVENTS sheet.";
+      const agents = Array.isArray(result)
+        ? result
+        : valueOf(result, ["agents", "data", "results"]);
 
+      if (!Array.isArray(agents)) {
+        throw new Error("Unexpected agent response from Apps Script.");
+      }
+
+      select.innerHTML = '<option value="">Select a boarding agent</option>';
+
+      agents.forEach(agent => {
+        const code = valueOf(agent, ["agentCode", "code", "Agent Code"]);
+        const name = valueOf(agent, ["fullName", "name", "Full Name"]);
+        const status = String(
+          valueOf(agent, ["status", "Status"]) || ""
+        ).toLowerCase();
+
+        if (!code || (status && status !== "active")) return;
+
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = name
+          ? String(name) + " (" + String(code) + ")"
+          : String(code);
+        select.appendChild(option);
+      });
+
+      if (select.options.length === 1) {
+        select.options[0].textContent = "No active agents available";
+      }
     } catch (error) {
-      select.replaceChildren(
-        new Option("Could not load events", "")
-      );
+      select.innerHTML = '<option value="">Could not load agents</option>';
+      console.error(error);
+      showStatus("AGENT LOAD ERROR", error.message, "error");
+    }
+  }
 
-      $("eventStatus").textContent =
-        error.message || String(error);
-
+  async function refreshData() {
+    $("refreshBtn").disabled = true;
+    try {
+      await Promise.all([loadEvents(), loadAgents()]);
+      if (!$("eventSelect").value || !$("agentSelect").value) {
+        showStatus("SYSTEM READY",
+          "Select an active event and boarding agent.");
+      }
     } finally {
       $("refreshBtn").disabled = false;
     }
   }
 
-  // ==========================================
-  // LOAD ACTIVE AGENT CODES FROM GOOGLE SHEETS
-  // ==========================================
+  $("refreshBtn").addEventListener("click", refreshData);
 
-  async function loadAgentCodes() {
-    const select = $("agentCode");
-    const status = $("agentStatus");
+  // -------------------- QR VALIDATION --------------------
 
-    $("refreshAgentsBtn").disabled = true;
-    status.textContent = "Loading active agent codes…";
+  function getOutcome(result) {
+    const text = [
+      valueOf(result, ["status", "result", "code", "message", "error"]),
+      valueOf(result, ["alreadyBoarded", "duplicate", "success"])
+    ].join(" ").toLowerCase();
 
-    const previous = select.value;
-
-    select.replaceChildren(
-      new Option("Loading active agent codes…", "")
-    );
-
-    try {
-      const agents = await jsonp({ api: "agents" });
-
-      if (!Array.isArray(agents)) {
-        throw new Error(
-          agents && agents.message
-            ? agents.message
-            : "Unexpected agent list response."
-        );
-      }
-
-      select.replaceChildren(
-        new Option("Select your agent code…", "")
-      );
-
-      agents.forEach(agent => {
-        if (!agent || !agent.code) return;
-
-        const label = agent.name
-          ? `${agent.code} — ${agent.name}`
-          : agent.code;
-
-        select.add(new Option(label, agent.code));
-      });
-
-      if (agents.some(agent => agent.code === previous)) {
-        select.value = previous;
-      }
-
-      status.textContent = agents.length
-        ? `${agents.length} active agent(s) loaded from the AGENTS sheet.`
-        : "No active agents found. Add agents to the AGENTS sheet.";
-
-    } catch (error) {
-      select.replaceChildren(
-        new Option("Unable to load agent codes", "")
-      );
-
-      status.textContent =
-        error.message || String(error);
-
-    } finally {
-      $("refreshAgentsBtn").disabled = false;
+    if (result && (
+      result.alreadyBoarded === true ||
+      result.duplicate === true ||
+      /already boarded|already scanned|duplicate/.test(text)
+    )) {
+      return "already";
     }
+
+    if (isSuccess(result)) return "success";
+
+    return "error";
   }
 
-  // ==========================================
-  // REQUIRED SELECTIONS
-  // ==========================================
-
-  function selectionsReady() {
-    if (!$("eventSelect").value) {
-      showResult(
-        false,
-        "NO EVENT SELECTED",
-        "Select a live event before scanning."
-      );
-      return false;
-    }
-
-    if (!$("agentCode").value) {
-      showResult(
-        false,
-        "AGENT CODE REQUIRED",
-        "Select your agent code before scanning."
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  // ==========================================
-  // CAMERA
-  // ==========================================
-
-  async function startCamera() {
-    if (!apiReady()) {
-      showResult(
-        false,
-        "SETUP ERROR",
-        "Check the Apps Script URL in index.html."
-      );
-      return;
-    }
-
-    if (!selectionsReady()) return;
-
-    if (typeof Html5Qrcode === "undefined") {
-      showResult(
-        false,
-        "SCANNER UNAVAILABLE",
-        "The camera library could not load. Check your internet connection."
-      );
-      return;
-    }
-
-    if (scannerRunning) return;
-
-    prepareAudio();
-
-    try {
-      if (!qrScanner) {
-        qrScanner = new Html5Qrcode("reader");
-      }
-
-      $("startBtn").disabled = true;
-
-      await qrScanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 230, height: 230 }
-        },
-        decodedText => {
-          if (processingScan) return;
-
-          processingScan = true;
-          playScanBeep();
-          validatePass(decodedText.trim());
-        },
-        () => {}
-      );
-
-      scannerRunning = true;
-      $("stopBtn").disabled = false;
-
-      showResult(
-        true,
-        "SCANNER READY",
-        "Point the camera at the member QR pass."
-      );
-
-    } catch (error) {
-      showResult(
-        false,
-        "CAMERA ERROR",
-        (error.message || String(error)) +
-        " Check camera permission and use the HTTPS GitHub Pages URL."
-      );
-
-    } finally {
-      $("startBtn").disabled = false;
-    }
-  }
-
-  async function stopCamera() {
-    if (!qrScanner || !scannerRunning) return;
-
-    try {
-      await qrScanner.stop();
-    } catch (error) {
-      console.warn("Camera stop issue:", error);
-    }
-
-    scannerRunning = false;
-    $("stopBtn").disabled = true;
-    $("startBtn").disabled = false;
-  }
-
-  // ==========================================
-  // MANUAL QR ENTRY
-  // ==========================================
-
-  function manualValidate() {
-    const value = $("manualQr").value.trim();
-
-    if (!value) {
-      showResult(
-        false,
-        "MISSING QR CONTENT",
-        "Paste the QR contents before validating."
-      );
-      return;
-    }
-
-    if (processingScan) return;
-    if (!selectionsReady()) return;
-
-    processingScan = true;
-    playScanBeep();
-    validatePass(value);
-  }
-
-  // ==========================================
-  // PASS VALIDATION
-  // ==========================================
-
-  async function validatePass(qrText) {
-    if (!selectionsReady()) {
-      releaseScanLock();
-      return;
-    }
+  async function validateQR(qrText) {
+    if (requestBusy) return;
 
     const eventId = $("eventSelect").value;
-    const agentCode = $("agentCode").value;
+    const agentCode = $("agentSelect").value;
 
-    showResult(
-      true,
-      "CHECKING PASS…",
-      `Validating for the selected event. Agent: ${agentCode}`
-    );
+    if (!eventId) {
+      showStatus("SELECT EVENT", "Choose an event before scanning.", "warning");
+      playRejectedSound();
+      return;
+    }
+
+    if (!agentCode) {
+      showStatus("SELECT AGENT", "Choose an active boarding agent first.", "warning");
+      playRejectedSound();
+      return;
+    }
+
+    if (!qrText || !qrText.trim()) {
+      showStatus("INVALID QR", "No QR code content was provided.", "error");
+      playRejectedSound();
+      return;
+    }
+
+    const now = Date.now();
+    if (qrText === lastScannedText && now - lastScannedAt < 3500) return;
+
+    lastScannedText = qrText;
+    lastScannedAt = now;
+    requestBusy = true;
+
+    $("manualBtn").disabled = true;
+    $("startBtn").disabled = true;
 
     try {
       const result = await jsonp({
         api: "validateBoarding",
-        qr: qrText,
+        qr: qrText.trim(),
         eventId: eventId,
         agentCode: agentCode
       });
 
-      if (!result || typeof result !== "object") {
-        throw new Error(
-          "The server returned an invalid validation result."
-        );
-      }
+      const outcome = getOutcome(result);
+      const message = valueOf(result, [
+        "message", "details", "error", "reason"
+      ]);
 
-      const success =
-        result.success === true ||
-        result.ok === true ||
-        result.valid === true ||
-        result.status === "BOARDED";
+      const memberName = valueOf(result, [
+        "memberName", "name", "Member Name"
+      ]);
 
-      const message =
-        result.message ||
-        result.error ||
-        (success
-          ? "Boarding pass accepted."
-          : "Boarding pass rejected.");
-
-      const details =
-        `${result.name ? result.name + " — " : ""}${message}`;
-
-      if (success) {
-        playSuccessBeep();
-
-        showResult(
-          true,
+      if (outcome === "success") {
+        playSuccessSound();
+        showStatus(
           "BOARDING ACCEPTED",
-          details + `\nAgent Code: ${agentCode}`
+          (memberName ? String(memberName) + " — " : "") +
+          (message || "Boarding recorded successfully."),
+          "success"
         );
-
-        $("manualQr").value = "";
-
+      } else if (outcome === "already") {
+        playAlreadyBoardedSound();
+        showStatus(
+          "ALREADY BOARDED",
+          message || "This boarding pass has already been processed.",
+          "warning"
+        );
       } else {
-        playErrorBeep();
-
-        showResult(
-          false,
-          result.duplicate ? "ALREADY BOARDED" : "BOARDING REJECTED",
-          details
+        playRejectedSound();
+        showStatus(
+          "BOARDING REJECTED",
+          message || "The QR code could not be validated for this event.",
+          "error"
         );
       }
 
+      $("qrInput").value = "";
     } catch (error) {
-      playErrorBeep();
-
-      showResult(
-        false,
-        "VALIDATION ERROR",
-        error.message || String(error)
-      );
-
+      playRejectedSound();
+      showStatus("CONNECTION ERROR", error.message, "error");
+      console.error(error);
     } finally {
-      releaseScanLock();
+      requestBusy = false;
+      $("manualBtn").disabled = false;
+      $("startBtn").disabled = cameraRunning;
+      $("qrInput").focus();
     }
   }
 
-  function releaseScanLock() {
-    clearTimeout(scanReleaseTimer);
+  $("manualForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    await validateQR($("qrInput").value);
+  });
 
-    scanReleaseTimer = setTimeout(() => {
-      processingScan = false;
-    }, 900);
-  }
+  // -------------------- CAMERA SCANNER --------------------
 
-  // ==========================================
-  // EVENT SELECTION
-  // ==========================================
+  async function startCamera() {
+    if (cameraRunning) return;
 
-  $("eventSelect").addEventListener("change", () => {
-    if ($("eventSelect").value) {
-      showResult(
-        true,
-        "EVENT SELECTED",
-        "Ready to scan passes for this event."
+    if (!$("eventSelect").value || !$("agentSelect").value) {
+      showStatus("SETUP REQUIRED",
+        "Select an event and boarding agent before starting the camera.",
+        "warning");
+      return;
+    }
+
+    if (!window.Html5Qrcode) {
+      showStatus("SCANNER UNAVAILABLE",
+        "The camera scanning library could not be loaded.", "error");
+      return;
+    }
+
+    $("startBtn").disabled = true;
+    showStatus("STARTING SCANNER",
+      "Allow camera access when your browser asks.");
+
+    try {
+      if (!scanner) scanner = new Html5Qrcode("reader");
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 12,
+          qrbox: (width, height) => {
+            const side = Math.floor(Math.min(width, height) * 0.72);
+            return { width: side, height: side };
+          },
+          aspectRatio: 1
+        },
+        async decodedText => {
+          if (requestBusy) return;
+          playScanSound();
+          await validateQR(decodedText);
+        },
+        () => {
+          // Ignore routine frames with no QR code.
+        }
       );
-    }
-  });
 
-  $("agentCode").addEventListener("change", () => {
-    if ($("agentCode").value) {
-      $("agentStatus").textContent =
-        "Selected agent: " + $("agentCode").value;
-    }
-  });
+      cameraRunning = true;
+      $("stopBtn").disabled = false;
+      $("startBtn").disabled = true;
 
-  // LOAD BOTH LISTS WHEN THE PAGE OPENS
-  loadEvents();
-  loadAgentCodes();
+      showStatus("SCANNER ACTIVE",
+        "Present a valid boarding QR code to the camera.");
+    } catch (error) {
+      cameraRunning = false;
+      $("startBtn").disabled = false;
+      $("stopBtn").disabled = true;
+
+      showStatus("CAMERA ERROR",
+        error && error.message
+          ? error.message
+          : "Could not start the camera. Check browser permissions.",
+        "error");
+    }
+  }
+
+  async function stopCamera() {
+    if (!scanner || !cameraRunning) return;
+
+    try {
+      await scanner.stop();
+      cameraRunning = false;
+      $("startBtn").disabled = false;
+      $("stopBtn").disabled = true;
+      showStatus("SCANNER STOPPED", "The camera has been stopped.");
+    } catch (error) {
+      showStatus("CAMERA ERROR",
+        error.message || "Could not stop the camera.", "error");
+    }
+  }
+
+  $("startBtn").addEventListener("click", startCamera);
+  $("stopBtn").addEventListener("click", stopCamera);
+
+  // -------------------- INITIALIZATION --------------------
+
+  refreshData();
 </script>
-
 </body>
 </html>
