@@ -693,72 +693,104 @@
     let text = String(rawValue == null ? "" : rawValue).trim();
     if (!text) return "";
 
-    // Some QR generators encode the JSON text as a URL-encoded string.
-    try {
-      if (/%[0-9a-f]{2}/i.test(text)) {
-        const decoded = decodeURIComponent(text.replace(/\+/g, "%20"));
-        if (decoded) text = decoded.trim();
-      }
-    } catch (_) {}
-
-    // A QR may contain a URL with the payload in a query parameter.
+    // If the QR contains a URL, extract the payload before decoding anything.
+    // Decoding the entire URL first can turn encoded ampersands into query separators.
     if (/^https?:\/\//i.test(text)) {
       try {
         const url = new URL(text);
-        for (const key of ["qr", "payload", "data", "ticket"]) {
+        const keys = ["qr", "qrContent", "qrText", "qrPayload", "payload", "data", "ticket"];
+        for (const key of keys) {
           const value = url.searchParams.get(key);
           if (value) { text = value.trim(); break; }
         }
       } catch (_) {}
     }
 
-    let parsed;
-    try { parsed = JSON.parse(text); } catch (_) { parsed = null; }
-    if (parsed && typeof parsed === "string") {
-      text = parsed.trim();
-      try { parsed = JSON.parse(text); } catch (_) { parsed = null; }
+    // Decode URL-encoded JSON/text, allowing more than one encoding layer.
+    for (let i = 0; i < 2; i++) {
+      if (!/%[0-9a-f]{2}/i.test(text)) break;
+      try {
+        const decoded = decodeURIComponent(text.replace(/\+/g, "%20")).trim();
+        if (!decoded || decoded === text) break;
+        text = decoded;
+      } catch (_) { break; }
     }
 
+    let parsed = null;
+    try {
+      parsed = JSON.parse(text);
+      for (let i = 0; i < 2 && typeof parsed === "string"; i++) {
+        text = parsed.trim();
+        parsed = JSON.parse(text);
+      }
+    } catch (_) { parsed = null; }
+
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      // Support wrapper objects commonly used by different pass generators.
       let obj = parsed;
-      for (let i = 0; i < 3; i++) {
-        const nested = obj.qrPayload || obj.payload || obj.ticket ||
-          obj.boardingPass || obj.data || obj.pass;
+      const getKey = (source, wanted) => {
+        if (!source || typeof source !== "object" || Array.isArray(source)) return undefined;
+        const wantedLower = wanted.toLowerCase();
+        const key = Object.keys(source).find(k => k.toLowerCase() === wantedLower);
+        return key === undefined ? undefined : source[key];
+      };
+
+      // Unwrap common payload wrappers, including wrappers containing JSON text.
+      for (let i = 0; i < 4; i++) {
+        let nested;
+        for (const key of ["qrPayload", "payload", "ticket", "boardingPass", "data", "pass"]) {
+          nested = getKey(obj, key);
+          if (nested !== undefined && nested !== null && nested !== "") break;
+        }
+        if (typeof nested === "string") {
+          const nestedText = nested.trim();
+          if (nestedText.startsWith("{") || nestedText.startsWith('"')) {
+            try { nested = JSON.parse(nestedText); } catch (_) {}
+          }
+        }
         if (!nested || typeof nested !== "object" || Array.isArray(nested)) break;
         obj = nested;
       }
 
       const pick = keys => {
         for (const key of keys) {
-          if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== "") {
-            return obj[key];
-          }
+          const value = getKey(obj, key);
+          if (value !== undefined && value !== null && String(value).trim() !== "") return value;
         }
         return "";
       };
 
-      const name = String(pick(["name", "memberName", "fullName", "studentName"])).trim();
-      const grade = String(pick(["grade", "gradeLevel", "yearLevel"])).trim();
-      const section = String(pick(["section", "classSection"])).trim();
+      const name = String(pick(["name", "memberName", "fullName", "studentName", "Member Name"])).trim();
+      const grade = String(pick(["grade", "gradeLevel", "yearLevel", "Grade Level"])).trim();
+      const section = String(pick(["section", "classSection", "Section"])).trim();
       let sequenceValue = pick(["sequence", "seq", "sequenceNumber", "ticketSequence"]);
-      if (!sequenceValue) {
-        const label = String(pick(["sequenceLabel", "seqLabel", "ticketNumber"]));
-        const match = label.match(/(?:SEQ|#)?\s*(\d+)/i);
-        if (match) sequenceValue = match[1];
+      let sequence = parseSequenceValue(sequenceValue);
+      if (!sequence) {
+        sequence = parseSequenceValue(pick(["sequenceLabel", "seqLabel", "ticketNumber", "ticketNo", "Sequence"]));
       }
-      const sequence = Number(sequenceValue);
 
-      if (name && Number.isInteger(sequence) && sequence >= 1) {
+      if (name && sequence >= 1) {
+        // Send one predictable payload shape to Apps Script.
         return JSON.stringify({ name, grade, section, sequence });
       }
 
-      // Legacy QR may carry a ticket/internal reference rather than member fields.
-      const ticketId = pick(["ticketId", "ticketID", "internalRef", "reference", "id"]);
+      const ticketId = pick(["ticketId", "ticketID", "internalRef", "reference", "ticketReference", "id", "Ticket ID"]);
       if (ticketId) return String(ticketId).trim();
+
+      // A plain name plus sequence label may be present in nonstandard QR JSON.
+      if (name && sequence >= 1) return JSON.stringify({ name, grade, section, sequence });
     }
 
     return text;
+  }
+
+  function parseSequenceValue(value) {
+    if (value === null || value === undefined) return 0;
+    const text = String(value).trim();
+    if (!text) return 0;
+    const match = text.match(/(?:SEQ\s*)?#?\s*(\d+)/i);
+    if (!match) return 0;
+    const number = Number(match[1]);
+    return Number.isFinite(number) && number > 0 ? number : 0;
   }
 
   async function validateQR(qrText) {
