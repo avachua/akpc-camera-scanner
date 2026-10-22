@@ -144,23 +144,45 @@
   }
   async function refreshLists() { await Promise.all([loadEvents(), loadAgents()]); }
 
-  // Original Code.gs QR payload is JSON: {name, grade, section, sequence}.
-  // Keep the complete payload; never reduce it to the sequence number.
+  // Preserve the QR contents exactly as decoded. The Apps Script backend
+  // is responsible for parsing the original JSON or supported legacy ticket format.
   function normalizeOriginalQr(qrText) {
-    let payload;
-    try { payload = JSON.parse(String(qrText || '').trim()); }
-    catch (_) { throw new Error('This QR is not in the original JSON format. Generate/reprint the boarding pass using the original Code.gs.'); }
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      throw new Error('Invalid QR payload. Expected the original JSON boarding-pass format.');
-    }
-    const name = String(payload.name || '').trim();
-    const grade = String(payload.grade || '').trim();
-    const section = String(payload.section || '').trim();
-    const sequence = Number(payload.sequence);
-    if (!name || !Number.isInteger(sequence) || sequence < 1) {
-      throw new Error('QR payload must contain name, grade, section, and a positive sequence number.');
-    }
-    return JSON.stringify({name, grade, section, sequence});
+    const text = String(qrText || '').trim();
+    if (!text) throw new Error('QR content is empty.');
+    if (text.length > 2000) throw new Error('QR content is unexpectedly long.');
+    return text;
+  }
+
+  // Airport-style gate tones: two rising notes for acceptance, descending
+  // warning tones for rejection. Browsers may require the first scan/click
+  // to unlock audio playback.
+  function playGateSound(accepted) {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audio = new AudioContextClass();
+      const now = audio.currentTime;
+      function tone(frequency, offset, duration, volume, type) {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = type || 'sine';
+        oscillator.frequency.setValueAtTime(frequency, now + offset);
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(volume, now + offset + 0.012);
+        gain.gain.setValueAtTime(volume, now + offset + Math.max(0.02, duration - 0.025));
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + duration);
+        oscillator.connect(gain); gain.connect(audio.destination);
+        oscillator.start(now + offset); oscillator.stop(now + offset + duration + 0.01);
+      }
+      if (accepted) {
+        tone(620, 0, 0.105, 0.12, 'sine');
+        tone(1040, 0.115, 0.095, 0.085, 'sine');
+      } else {
+        tone(310, 0, 0.19, 0.13, 'square');
+        tone(205, 0.215, 0.23, 0.11, 'square');
+      }
+      setTimeout(() => audio.close().catch(() => {}), (accepted ? 0.27 : 0.52) * 1000 + 120);
+    } catch (e) { console.warn('Gate sound unavailable:', e); }
   }
 
   async function startCamera() {
@@ -208,9 +230,11 @@
       if (!result || typeof result !== 'object') throw new Error('The server returned an invalid validation result.');
       const success = result.success === true || result.ok === true || result.valid === true || result.status === 'BOARDED';
       showResult(success, success ? 'BOARDING ACCEPTED' : (result.duplicate ? 'ALREADY BOARDED' : 'BOARDING REJECTED'), `${(result.memberName || result.name) ? (result.memberName || result.name) + ' — ' : ''}${result.message || (success ? 'Pass accepted.' : 'Pass rejected.')}`);
+      playGateSound(success);
       if (success) $('manualQr').value = '';
     } catch (err) {
       showResult(false, 'VALIDATION ERROR', err.message || String(err));
+      playGateSound(false);
     } finally {
       setTimeout(() => { processingScan = false; }, 900);
     }
