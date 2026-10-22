@@ -357,6 +357,7 @@
   // Keep this URL matched to your deployed Apps Script web app.
   const API_URL =
     "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
+  const EXPECTED_API_VERSION = "AKPC_BOARDING_DUPLICATE_FIX_2026_10_23_1";
 
   const $ = id => document.getElementById(id);
 
@@ -669,21 +670,21 @@
   // -------------------- QR VALIDATION --------------------
 
   function getOutcome(result) {
-    const text = [
-      valueOf(result, ["status", "result", "code", "message", "error"]),
-      valueOf(result, ["alreadyBoarded", "duplicate", "success"])
-    ].join(" ").toLowerCase();
+    if (!result || typeof result !== "object") return "error";
 
-    if (result && (
-      result.alreadyBoarded === true ||
+    // Do not infer a duplicate from free-text messages. Only trust explicit
+    // structured duplicate flags/status returned by the current backend.
+    const status = String(result.status || "").trim().toUpperCase();
+    if (
       result.duplicate === true ||
-      /already boarded|already scanned|duplicate/.test(text)
-    )) {
+      result.alreadyBoarded === true ||
+      status === "DUPLICATE" ||
+      status === "ALREADY_BOARDED"
+    ) {
       return "already";
     }
 
     if (isSuccess(result)) return "success";
-
     return "error";
   }
 
@@ -842,6 +843,19 @@
         eventId: eventId,
         agentCode: agentCode
       });
+
+      // Prevent an old Apps Script deployment from returning stale duplicate
+      // decisions. Deploy the matching Code.gs version if this check fails.
+      if (!result || result.apiVersion !== EXPECTED_API_VERSION) {
+        playRejectedSound();
+        showStatus(
+          "BACKEND UPDATE REQUIRED",
+          "The Apps Script deployment is outdated or does not match this scanner. Replace Code.gs with the supplied version, deploy a new version, then reload this page.",
+          "error"
+        );
+        console.error("AKPC backend version mismatch:", result);
+        return;
+      }
 
       const outcome = getOutcome(result);
       const message = valueOf(result, [
