@@ -53,7 +53,7 @@
 </main>
 <script>
   // IMPORTANT: Replace this with your deployed Apps Script Web App URL ending in /exec.
-  const API_URL = "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
   let qrScanner = null;
   let scannerRunning = false;
   let processingScan = false;
@@ -68,7 +68,7 @@
     box.replaceChildren(heading, document.createTextNode(message || ''));
   }
   function apiReady() {
-    return API_URL.startsWith('https://script.google.com/macros/s/') && API_URL.endsWith('/exec');
+    return /^https:\/\/script\.google\.com\/(?:macros\/s\/|a\/macros\/[^/]+\/s\/)AKfycb[A-Za-z0-9_-]+\/exec$/.test(API_URL);
   }
   function jsonp(params, timeoutMs = 18000) {
     return new Promise((resolve, reject) => {
