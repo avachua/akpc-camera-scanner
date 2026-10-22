@@ -374,8 +374,11 @@
       window.AudioContext || window.webkitAudioContext;
 
     if (!AudioContextClass) {
-      showStatus("AUDIO UNAVAILABLE",
-        "This browser does not support Web Audio.", "warning");
+      showStatus(
+        "AUDIO UNAVAILABLE",
+        "This browser does not support Web Audio.",
+        "warning"
+      );
       return false;
     }
 
@@ -389,48 +392,68 @@
     return true;
   }
 
-  function tone(frequency, start, duration, volume, type = "sine") {
+  function tone(
+    frequency,
+    start,
+    duration,
+    volume,
+    type = "sine",
+    endFrequency = null
+  ) {
     if (!audioEnabled || !audioContext) return;
 
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const when = audioContext.currentTime + start;
+    try {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const when = audioContext.currentTime + start;
+      const finish = when + duration;
 
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, when);
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, when);
 
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(
-      Math.max(0.0002, volume), when + 0.008
-    );
-    gain.gain.setValueAtTime(
-      Math.max(0.0002, volume), when + Math.max(0.01, duration - 0.025)
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001, when + duration
-    );
+      if (endFrequency !== null) {
+        oscillator.frequency.exponentialRampToValueAtTime(
+          Math.max(1, endFrequency),
+          finish
+        );
+      }
 
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-    oscillator.start(when);
-    oscillator.stop(when + duration + 0.02);
+      gain.gain.setValueAtTime(0.0001, when);
+      gain.gain.exponentialRampToValueAtTime(
+        Math.max(0.0002, volume),
+        when + 0.008
+      );
+      gain.gain.setValueAtTime(
+        Math.max(0.0002, volume),
+        when + duration * 0.55
+      );
+      gain.gain.exponentialRampToValueAtTime(0.0001, finish);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start(when);
+      oscillator.stop(finish + 0.02);
+    } catch (error) {
+      console.warn("Could not play tone:", error);
+    }
   }
 
   function playScanSound() {
     // Short, precise barcode-reader acknowledgement.
-    tone(1850, 0, 0.045, 0.045, "sine");
+    tone(1150, 0, 0.055, 0.055, "sine");
   }
 
   function playSuccessSound() {
-    // Two clean confirmation tones, without an arcade-style sweep.
-    tone(880, 0, 0.085, 0.075, "sine");
-    tone(1174.66, 0.105, 0.115, 0.075, "sine");
+    // Two distinct confirmation beeps: lower first, higher second.
+    tone(620, 0, 0.105, 0.16, "sine");
+    tone(880, 0.145, 0.135, 0.14, "sine");
   }
 
   function playRejectedSound() {
-    // A lower, restrained two-tone rejection.
-    tone(392, 0, 0.12, 0.065, "triangle");
-    tone(311.13, 0.16, 0.16, 0.065, "triangle");
+    // Two descending warning tones for rejected boarding.
+    tone(390, 0, 0.16, 0.11, "sawtooth", 315);
+    tone(300, 0.205, 0.22, 0.10, "sawtooth", 205);
   }
 
   function playAlreadyBoardedSound() {
