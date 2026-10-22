@@ -2,234 +2,441 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AKPC Boarding Scanner</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<style>
-*{box-sizing:border-box}
-body{margin:0;padding:18px;background:#f1f5f9;color:#102b4e;font-family:Arial,sans-serif}
-main{max-width:600px;margin:auto}
-.panel{background:white;padding:20px;border-radius:16px;margin-bottom:16px;box-shadow:0 4px 15px #0001}
-h1{font-size:23px;margin:0 0 8px}
-p{line-height:1.5;color:#64748b}
-label{display:block;font-weight:bold;margin-top:15px}
-input,button{width:100%;padding:14px;margin-top:10px;border-radius:9px;font-size:16px}
-input{border:1px solid #cbd5e1}
-button{border:0;font-weight:bold;cursor:pointer;background:#102b4e;color:white}
-button.secondary{background:#e2e8f0;color:#102b4e}
-button:disabled{opacity:.5}
-#reader{width:100%;min-height:260px;overflow:hidden;border-radius:12px;background:#f8fafc;margin-top:15px}
-#reader video{width:100%;object-fit:cover}
-#status{white-space:pre-wrap;overflow-wrap:anywhere;padding:15px;background:#dbeafe;border-radius:10px;line-height:1.5}
-.good{background:#dcfce7!important;color:#166534}
-.bad{background:#fee2e2!important;color:#991b1b}
-.small{font-size:13px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AKPC Boarding Gate QR Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #121d30;
+      --line: #2a3a53;
+      --gold: #e8bd58;
+      --muted: #aab8ca;
+      --green: #1f9d68;
+      --red: #c84454;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: #f5f7fb;
+      font: 16px/1.45 Arial, sans-serif;
+      padding: 22px;
+    }
+    main { max-width: 760px; margin: auto; }
+    .brand { text-align: center; margin-bottom: 22px; }
+    .brand h1 {
+      font-size: clamp(22px, 5vw, 34px);
+      letter-spacing: .04em;
+      margin: 0 0 6px;
+    }
+    .brand p { margin: 0; color: var(--gold); font-weight: bold; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 14px 0;
+    }
+    .label { display: block; font-weight: bold; margin-bottom: 8px; }
+    .hint, .muted { color: var(--muted); font-size: 14px; }
+    select, input, button {
+      width: 100%;
+      font: inherit;
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+    }
+    select, input {
+      background: #0c1627;
+      color: #fff;
+      margin: 7px 0 12px;
+    }
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      background: var(--gold);
+      color: #161b24;
+      border: 0;
+      margin: 4px 0;
+    }
+    button.secondary {
+      background: #273750;
+      color: #fff;
+      border: 1px solid #3b4d68;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #reader {
+      width: 100%;
+      max-width: 520px;
+      margin: 14px auto 0;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    #reader video { border-radius: 12px; }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .result {
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 14px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .ok { background: #103b2d; border: 1px solid var(--green); }
+    .bad { background: #3a1821; border: 1px solid var(--red); }
+    .neutral { background: #1b2a40; border: 1px solid var(--line); }
+    .result strong { display: block; font-size: 18px; margin-bottom: 4px; }
+    .foot {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    @media(max-width:480px) {
+      body { padding: 14px; }
+      .panel { padding: 15px; }
+      .actions { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 <main>
-<section class="panel">
-<h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
-<p>AKPC Boarding Gate QR Scanner</p>
+  <header class="brand">
+    <h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
+    <p>AKPC Boarding Gate QR Scanner</p>
+  </header>
 
-<label for="eventId">EVENT ID</label>
-<input id="eventId" placeholder="Example: AKPC-20261022-001" autocomplete="off">
+  <section class="panel">
+    <label class="label" for="eventSelect">LIVE EVENTS</label>
+    <div class="hint">
+      Events are loaded from the Google Sheets EVENTS tab.
+      Only events marked ACTIVE appear.
+    </div>
+    <select id="eventSelect">
+      <option value="">Loading live events…</option>
+    </select>
+    <button id="refreshBtn" class="secondary" type="button">
+      REFRESH EVENTS
+    </button>
+    <div id="eventStatus" class="hint" role="status">
+      Connecting to the event list…
+    </div>
+  </section>
 
-<p class="small">Enter the exact Event ID from the EVENTS sheet.</p>
-</section>
+  <section class="panel">
+    <h2 style="margin-top:0">Camera Scanner</h2>
+    <div class="hint">
+      Select an event, start the camera, and scan a member QR pass.
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button id="startBtn" type="button">START CAMERA</button>
+      <button id="stopBtn" class="secondary" type="button" disabled>
+        STOP CAMERA
+      </button>
+    </div>
+    <div id="reader"></div>
+    <div id="scanResult" class="result neutral" role="status">
+      <strong>READY</strong>
+      Select a live event to begin.
+    </div>
+  </section>
 
-<section class="panel">
-<h2>Camera Scanner</h2>
-<div id="reader"></div>
+  <section class="panel">
+    <label class="label" for="manualQr">Manual QR fallback</label>
+    <div class="hint">
+      If the camera cannot read the pass, paste the QR contents here.
+    </div>
+    <input id="manualQr" type="text" placeholder="Paste QR code contents">
+    <button id="manualBtn" type="button">VALIDATE PASS</button>
+  </section>
 
-<button id="startBtn" onclick="startScanner()">START CAMERA</button>
-<button class="secondary" onclick="stopScanner()">STOP CAMERA</button>
-
-<div id="status">Ready. Enter an Event ID and press START CAMERA.</div>
-</section>
+  <div class="foot">
+    AKPC Check-In &amp; Boarding • Official scanner
+  </div>
 </main>
 
 <script>
-/*
-  IMPORTANT:
-  Replace this placeholder with your deployed Apps Script
-  Web App URL ending in /exec.
-*/
-const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_EXEC_URL_HERE";
+  // REPLACE WITH YOUR DEPLOYED APPS SCRIPT URL ENDING IN /exec.
+  const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_EXEC_URL_HERE";
 
-let scanner = null;
-let running = false;
-let processing = false;
-let lastCode = "";
+  let qrScanner = null;
+  let scannerRunning = false;
+  let processingScan = false;
+  let callbackCounter = 0;
 
-const $ = id => document.getElementById(id);
+  const $ = id => document.getElementById(id);
 
-function show(message,type=""){
-  $("status").className = type;
-  $("status").textContent = message;
-}
+  function showResult(ok, title, message) {
+    const box = $('scanResult');
+    box.className = 'result ' + (ok ? 'ok' : 'bad');
 
-function validApiUrl(){
-  if(!API_URL.startsWith("https://script.google.com/macros/s/") ||
-     !API_URL.endsWith("/exec")){
-    show("SETUP REQUIRED\nAdd your deployed Apps Script Web App URL to API_URL in index.html.","bad");
-    return false;
-  }
-  return true;
-}
+    const heading = document.createElement('strong');
+    heading.textContent = title;
 
-async function startScanner(){
-  if(running) return;
-
-  if(!$("eventId").value.trim()){
-    show("Enter the Event ID first.","bad");
-    return;
+    box.replaceChildren(
+      heading,
+      document.createTextNode(message || '')
+    );
   }
 
-  if(!validApiUrl()) return;
-
-  if(typeof Html5Qrcode === "undefined"){
-    show("SCANNER LIBRARY ERROR\nCheck your internet connection and reload this page.","bad");
-    return;
+  function apiReady() {
+    return API_URL.startsWith(
+      'https://script.google.com/macros/s/'
+    ) && API_URL.endsWith('/exec');
   }
 
-  $("startBtn").disabled = true;
+  function jsonp(params, timeoutMs = 18000) {
+    return new Promise((resolve, reject) => {
+      if (!apiReady()) {
+        reject(new Error(
+          'Setup required: add your deployed Apps Script Web App URL to API_URL.'
+        ));
+        return;
+      }
 
-  try{
-    scanner = new Html5Qrcode("reader");
-    show("REQUESTING CAMERA\nAllow camera access if your browser asks.");
+      const callback =
+        'akpcJsonp_' + Date.now() + '_' + (++callbackCounter);
 
-    try{
-      await scanner.start(
-        {facingMode:"environment"},
-        {
-          fps:10,
-          qrbox:(width,height)=>{
-            const size=Math.max(150,Math.min(260,Math.floor(Math.min(width,height)*0.7)));
-            return {width:size,height:size};
-          },
-          aspectRatio:1
-        },
-        handleScan,
-        ()=>{}
-      );
-    }catch(firstError){
-      try{scanner.clear()}catch(e){}
-      scanner = new Html5Qrcode("reader");
+      const script = document.createElement('script');
+      let finished = false;
+      let timer;
 
-      const cameras = await Html5Qrcode.getCameras();
-      if(!cameras || !cameras.length) throw firstError;
+      function cleanup() {
+        if (script.parentNode) script.parentNode.removeChild(script);
+        try {
+          delete window[callback];
+        } catch (_) {
+          window[callback] = undefined;
+        }
+        clearTimeout(timer);
+      }
 
-      const camera = cameras.find(c=>/back|rear|environment/i.test(c.label)) || cameras[0];
+      timer = setTimeout(() => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error(
+          'Apps Script did not respond. Check deployment access and deploy the latest Code.gs.'
+        ));
+      }, timeoutMs);
 
-      await scanner.start(
-        camera.id,
-        {fps:10,qrbox:{width:220,height:220}},
-        handleScan,
-        ()=>{}
-      );
+      window[callback] = data => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(data);
+      };
+
+      const query = new URLSearchParams({
+        ...params,
+        callback
+      }).toString();
+
+      script.onerror = () => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error(
+          'Could not contact Apps Script. Check the URL and deployment permissions.'
+        ));
+      };
+
+      script.src = API_URL + '?' + query;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadEvents() {
+    const select = $('eventSelect');
+    $('refreshBtn').disabled = true;
+    $('eventStatus').textContent = 'Loading events from Google Sheets…';
+    select.replaceChildren(new Option('Loading live events…', ''));
+
+    try {
+      const events = await jsonp({ api: 'events' });
+
+      if (!Array.isArray(events)) {
+        throw new Error(
+          events && events.message
+            ? events.message
+            : 'Unexpected event list response.'
+        );
+      }
+
+      const previous = select.value;
+      select.replaceChildren(new Option('Select a live event…', ''));
+
+      events.forEach(event => {
+        const label =
+          `${event.name} — ${event.date || 'Date not set'} (${event.id})`;
+        select.add(new Option(label, event.id));
+      });
+
+      if (events.some(event => event.id === previous)) {
+        select.value = previous;
+      }
+
+      $('eventStatus').textContent = events.length
+        ? `${events.length} active event(s) loaded. Press REFRESH EVENTS to reload.`
+        : 'No ACTIVE events found. Create or activate an event in the EVENTS sheet.';
+
+    } catch (err) {
+      select.replaceChildren(new Option('Could not load events', ''));
+      $('eventStatus').textContent = err.message || String(err);
+    } finally {
+      $('refreshBtn').disabled = false;
+    }
+  }
+
+  async function startCamera() {
+    if (!apiReady()) {
+      showResult(false, 'SETUP REQUIRED',
+        'Replace API_URL with your deployed Apps Script URL ending in /exec.');
+      return;
     }
 
-    running = true;
-    show("CAMERA READY\nPoint the camera at a boarding-pass QR code.","good");
-  }catch(error){
-    running = false;
-    try{if(scanner)scanner.clear()}catch(e){}
-    scanner = null;
-    $("startBtn").disabled = false;
+    if (!$('eventSelect').value) {
+      showResult(false, 'NO EVENT SELECTED',
+        'Select a live event before scanning.');
+      return;
+    }
 
-    show("CAMERA COULD NOT START\n"+(error.message||String(error))+
-      "\n\nOpen the HTTPS GitHub Pages site directly. Check browser camera permissions and close other apps using the camera.","bad");
-    console.error(error);
+    if (typeof Html5Qrcode === 'undefined') {
+      showResult(false, 'SCANNER UNAVAILABLE',
+        'The scanner library did not load. Check your internet connection.');
+      return;
+    }
+
+    if (scannerRunning) return;
+
+    try {
+      if (!qrScanner) qrScanner = new Html5Qrcode('reader');
+
+      $('startBtn').disabled = true;
+
+      await qrScanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 230, height: 230 } },
+        decodedText => {
+          if (!processingScan) validatePass(decodedText.trim());
+        },
+        () => {}
+      );
+
+      scannerRunning = true;
+      $('stopBtn').disabled = false;
+
+      showResult(true, 'SCANNER READY',
+        'Point the camera at the member QR pass.');
+
+    } catch (err) {
+      showResult(false, 'CAMERA ERROR',
+        (err.message || String(err)) +
+        ' Check camera permission and use the HTTPS GitHub Pages URL.');
+    } finally {
+      $('startBtn').disabled = false;
+    }
   }
-}
 
-function validateBoarding(qrText){
-  const eventId = $("eventId").value.trim();
-  const callbackName = "akpcResponse_" + Date.now() + "_" + Math.floor(Math.random()*100000);
-  const script = document.createElement("script");
-  const params = new URLSearchParams({
-    api:"validateBoarding",
-    qr:qrText,
-    eventId:eventId,
-    callback:callbackName
+  async function stopCamera() {
+    if (!qrScanner || !scannerRunning) return;
+
+    try {
+      await qrScanner.stop();
+    } catch (err) {
+      console.warn(err);
+    }
+
+    scannerRunning = false;
+    $('stopBtn').disabled = true;
+    $('startBtn').disabled = false;
+  }
+
+  function manualValidate() {
+    const value = $('manualQr').value.trim();
+
+    if (!value) {
+      showResult(false, 'MISSING QR CONTENT',
+        'Scan a QR code or paste its contents first.');
+      return;
+    }
+
+    validatePass(value);
+  }
+
+  async function validatePass(qrText) {
+    const eventId = $('eventSelect').value;
+
+    if (!eventId) {
+      showResult(false, 'NO EVENT SELECTED',
+        'Select a live event before scanning.');
+      return;
+    }
+
+    if (processingScan) return;
+    processingScan = true;
+
+    showResult(true, 'CHECKING PASS…',
+      'Validating against the selected event.');
+
+    try {
+      const result = await jsonp({
+        api: 'validateBoarding',
+        qr: qrText,
+        eventId: eventId
+      });
+
+      if (!result || typeof result !== 'object') {
+        throw new Error('The server returned an invalid validation result.');
+      }
+
+      const success =
+        result.success === true ||
+        result.ok === true ||
+        result.valid === true ||
+        result.status === 'BOARDED';
+
+      showResult(
+        success,
+        success
+          ? 'BOARDING ACCEPTED'
+          : (result.duplicate ? 'ALREADY BOARDED' : 'BOARDING REJECTED'),
+        `${result.name ? result.name + ' — ' : ''}${
+          result.message || (success ? 'Pass accepted.' : 'Pass rejected.')
+        }`
+      );
+
+      if (success) $('manualQr').value = '';
+
+    } catch (err) {
+      showResult(false, 'VALIDATION ERROR',
+        err.message || String(err));
+    } finally {
+      setTimeout(() => {
+        processingScan = false;
+      }, 900);
+    }
+  }
+
+  $('refreshBtn').addEventListener('click', loadEvents);
+  $('startBtn').addEventListener('click', startCamera);
+  $('stopBtn').addEventListener('click', stopCamera);
+  $('manualBtn').addEventListener('click', manualValidate);
+
+  $('eventSelect').addEventListener('change', () => {
+    if ($('eventSelect').value) {
+      showResult(true, 'EVENT SELECTED',
+        'Ready to scan passes for this event.');
+    }
   });
 
-  let finished = false;
-
-  function cleanup(){
-    if(finished)return;
-    finished = true;
-    clearTimeout(timer);
-    script.remove();
-    try{delete window[callbackName]}catch(e){window[callbackName]=undefined}
-  }
-
-  const timer = setTimeout(()=>{
-    cleanup();
-    processing = false;
-    show("VALIDATION TIMEOUT\nNo response from Apps Script. Check the Web App URL and deployment.","bad");
-  },20000);
-
-  window[callbackName] = function(result){
-    cleanup();
-    const success = !!(result && result.success);
-    const duplicate = !!(result && result.duplicate);
-    const details = result && result.name ? "\nMember: "+result.name : "";
-    const sequence = result && result.sequence ? "\nSequence: "+result.sequence : "";
-    const time = result && (result.time || result.previousTime)
-      ? "\nTime: "+(result.time || result.previousTime) : "";
-
-    show(
-      (success ? "BOARDING SUCCESSFUL" : duplicate ? "DUPLICATE BOARDING" : "BOARDING REJECTED")+
-      "\n"+((result && result.message) || "No response message.")+
-      details+sequence+time,
-      success ? "good" : "bad"
-    );
-
-    processing = false;
-    setTimeout(()=>{lastCode=""},2500);
-  };
-
-  script.onerror = function(){
-    cleanup();
-    processing = false;
-    show("CONNECTION ERROR\nCould not reach Apps Script. Check API_URL and redeploy the web app.","bad");
-  };
-
-  script.src = API_URL + "?" + params.toString();
-  document.head.appendChild(script);
-}
-
-function handleScan(decodedText){
-  const qrText = String(decodedText||"").trim();
-  if(!qrText || processing || !running || qrText===lastCode)return;
-
-  processing = true;
-  lastCode = qrText;
-  show("QR CODE DETECTED\nValidating boarding pass...");
-
-  validateBoarding(qrText);
-}
-
-async function stopScanner(){
-  if(scanner){
-    try{if(running)await scanner.stop()}catch(e){}
-    try{scanner.clear()}catch(e){}
-  }
-
-  scanner = null;
-  running = false;
-  processing = false;
-  lastCode = "";
-  $("startBtn").disabled = false;
-  show("CAMERA STOPPED\nPress START CAMERA to scan again.");
-}
-
-window.addEventListener("pagehide",()=>{
-  if(scanner && running)scanner.stop().catch(()=>{});
-});
+  loadEvents();
 </script>
 </body>
 </html>
