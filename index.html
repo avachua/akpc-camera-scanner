@@ -752,7 +752,7 @@
       };
       const name = String(pick(["name", "memberName", "fullName", "studentName", "Member Name"])).trim();
       let sequence = parseSequenceValue(pick(["sequence", "seq", "sequenceNumber", "ticketSequence", "sequenceLabel", "seqLabel", "ticketNumber", "ticketNo", "Sequence"]));
-      if (name && sequence >= 1) return JSON.stringify({ name, sequence: "SEQ" + String(sequence).padStart(3, "0"), grade: String(pick(["grade", "gradeLevel", "yearLevel", "Grade Level"])).trim(), section: String(pick(["section", "classSection", "Section"])).trim() });
+      if (name && sequence >= 1) return JSON.stringify({ name, sequence: "SEQ" + String(sequence).padStart(3, "0") });
       return text;
     }
 
