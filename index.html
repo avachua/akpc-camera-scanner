@@ -445,9 +445,10 @@
   }
 
   function playSuccessSound() {
-    // Two distinct confirmation beeps: lower first, higher second.
-    tone(620, 0, 0.105, 0.16, "sine");
-    tone(880, 0.145, 0.135, 0.14, "sine");
+    // Two distinct gate-confirmation beeps: a lower, slightly hollow
+    // mechanical first beep, followed by a brighter higher confirmation.
+    tone(620, 0, 0.105, 0.12, "triangle");
+    tone(880, 0.145, 0.135, 0.115, "sine");
   }
 
   function playRejectedSound() {
@@ -685,6 +686,81 @@
     return "error";
   }
 
+  // Convert common QR payload variants to the canonical format expected
+  // by Code.gs: {name, grade, section, sequence}. Unknown text is preserved
+  // so the server can still handle legacy ticket IDs.
+  function normalizeQrContent(rawValue) {
+    let text = String(rawValue == null ? "" : rawValue).trim();
+    if (!text) return "";
+
+    // Some QR generators encode the JSON text as a URL-encoded string.
+    try {
+      if (/%[0-9a-f]{2}/i.test(text)) {
+        const decoded = decodeURIComponent(text.replace(/\+/g, "%20"));
+        if (decoded) text = decoded.trim();
+      }
+    } catch (_) {}
+
+    // A QR may contain a URL with the payload in a query parameter.
+    if (/^https?:\/\//i.test(text)) {
+      try {
+        const url = new URL(text);
+        for (const key of ["qr", "payload", "data", "ticket"]) {
+          const value = url.searchParams.get(key);
+          if (value) { text = value.trim(); break; }
+        }
+      } catch (_) {}
+    }
+
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (_) { parsed = null; }
+    if (parsed && typeof parsed === "string") {
+      text = parsed.trim();
+      try { parsed = JSON.parse(text); } catch (_) { parsed = null; }
+    }
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      // Support wrapper objects commonly used by different pass generators.
+      let obj = parsed;
+      for (let i = 0; i < 3; i++) {
+        const nested = obj.qrPayload || obj.payload || obj.ticket ||
+          obj.boardingPass || obj.data || obj.pass;
+        if (!nested || typeof nested !== "object" || Array.isArray(nested)) break;
+        obj = nested;
+      }
+
+      const pick = keys => {
+        for (const key of keys) {
+          if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== "") {
+            return obj[key];
+          }
+        }
+        return "";
+      };
+
+      const name = String(pick(["name", "memberName", "fullName", "studentName"])).trim();
+      const grade = String(pick(["grade", "gradeLevel", "yearLevel"])).trim();
+      const section = String(pick(["section", "classSection"])).trim();
+      let sequenceValue = pick(["sequence", "seq", "sequenceNumber", "ticketSequence"]);
+      if (!sequenceValue) {
+        const label = String(pick(["sequenceLabel", "seqLabel", "ticketNumber"]));
+        const match = label.match(/(?:SEQ|#)?\s*(\d+)/i);
+        if (match) sequenceValue = match[1];
+      }
+      const sequence = Number(sequenceValue);
+
+      if (name && Number.isInteger(sequence) && sequence >= 1) {
+        return JSON.stringify({ name, grade, section, sequence });
+      }
+
+      // Legacy QR may carry a ticket/internal reference rather than member fields.
+      const ticketId = pick(["ticketId", "ticketID", "internalRef", "reference", "id"]);
+      if (ticketId) return String(ticketId).trim();
+    }
+
+    return text;
+  }
+
   async function validateQR(qrText) {
     if (requestBusy) return;
 
@@ -712,7 +788,14 @@
     const now = Date.now();
     if (qrText === lastScannedText && now - lastScannedAt < 3500) return;
 
-    lastScannedText = qrText;
+    const normalizedQr = normalizeQrContent(qrText);
+    if (!normalizedQr) {
+      showStatus("INVALID QR", "The scanner returned empty QR content.", "error");
+      playRejectedSound();
+      return;
+    }
+
+    lastScannedText = normalizedQr;
     lastScannedAt = now;
     requestBusy = true;
 
@@ -722,7 +805,7 @@
     try {
       const result = await jsonp({
         api: "validateBoarding",
-        qr: qrText.trim(),
+        qr: normalizedQr,
         eventId: eventId,
         agentCode: agentCode
       });
@@ -775,6 +858,7 @@
 
   $("manualForm").addEventListener("submit", async event => {
     event.preventDefault();
+    await enableAudio();
     await validateQR($("qrInput").value);
   });
 
@@ -801,6 +885,8 @@
       "Allow camera access when your browser asks.");
 
     try {
+      // A real button click unlocks browser audio playback.
+      await enableAudio();
       if (!scanner) scanner = new Html5Qrcode("reader");
 
       await scanner.start(
