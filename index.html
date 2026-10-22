@@ -3,104 +3,233 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AKPC Boarding Scanner</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
-body{font-family:Arial,sans-serif;background:#f1f5f9;color:#102b4e;padding:16px;margin:0}
-main{max-width:500px;margin:auto}
-section{background:white;padding:20px;border-radius:14px;margin-bottom:16px}
-h2{text-align:center}
-input,button{width:100%;padding:14px;margin-top:12px;box-sizing:border-box;font-size:16px;border-radius:8px}
-input{border:1px solid #bbb}
-button{border:0;background:#102b4e;color:white;font-weight:bold}
-#reader{width:100%;min-height:250px;margin-top:15px}
-#status{white-space:pre-wrap;overflow-wrap:anywhere}
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:#f1f5f9;color:#102b4e;font-family:Arial,sans-serif}
+main{max-width:600px;margin:auto}
+.panel{background:white;padding:20px;border-radius:16px;margin-bottom:16px;box-shadow:0 4px 15px #0001}
+h1{font-size:23px;margin:0 0 8px}
+p{line-height:1.5;color:#64748b}
+label{display:block;font-weight:bold;margin-top:15px}
+input,button{width:100%;padding:14px;margin-top:10px;border-radius:9px;font-size:16px}
+input{border:1px solid #cbd5e1}
+button{border:0;font-weight:bold;cursor:pointer;background:#102b4e;color:white}
+button.secondary{background:#e2e8f0;color:#102b4e}
+button:disabled{opacity:.5}
+#reader{width:100%;min-height:260px;overflow:hidden;border-radius:12px;background:#f8fafc;margin-top:15px}
+#reader video{width:100%;object-fit:cover}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;padding:15px;background:#dbeafe;border-radius:10px;line-height:1.5}
+.good{background:#dcfce7!important;color:#166534}
+.bad{background:#fee2e2!important;color:#991b1b}
+.small{font-size:13px}
 </style>
 </head>
 <body>
 <main>
-<section>
-<h2>ATENEO KNIGHTS PICKLEBALL CLUB</h2>
+<section class="panel">
+<h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
 <p>AKPC Boarding Gate QR Scanner</p>
-<label for="event">Event ID</label>
-<input id="event" placeholder="Enter event ID">
+
+<label for="eventId">EVENT ID</label>
+<input id="eventId" placeholder="Example: AKPC-20261022-001" autocomplete="off">
+
+<p class="small">Enter the exact Event ID from the EVENTS sheet.</p>
 </section>
 
-<section>
-<h3>Camera Scanner</h3>
+<section class="panel">
+<h2>Camera Scanner</h2>
 <div id="reader"></div>
-<button id="start" onclick="startCamera()">START CAMERA</button>
-<button onclick="stopCamera()">STOP CAMERA</button>
-<p id="status">Ready. Enter an event ID, then start the camera.</p>
+
+<button id="startBtn" onclick="startScanner()">START CAMERA</button>
+<button class="secondary" onclick="stopScanner()">STOP CAMERA</button>
+
+<div id="status">Ready. Enter an Event ID and press START CAMERA.</div>
 </section>
 </main>
 
 <script>
-let scanner=null;
-let running=false;
+/*
+  IMPORTANT:
+  Replace this placeholder with your deployed Apps Script
+  Web App URL ending in /exec.
+*/
+const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_EXEC_URL_HERE";
 
-function status(message){
-  document.getElementById("status").textContent=message;
+let scanner = null;
+let running = false;
+let processing = false;
+let lastCode = "";
+
+const $ = id => document.getElementById(id);
+
+function show(message,type=""){
+  $("status").className = type;
+  $("status").textContent = message;
 }
 
-async function startCamera(){
-  if(running)return;
+function validApiUrl(){
+  if(!API_URL.startsWith("https://script.google.com/macros/s/") ||
+     !API_URL.endsWith("/exec")){
+    show("SETUP REQUIRED\nAdd your deployed Apps Script Web App URL to API_URL in index.html.","bad");
+    return false;
+  }
+  return true;
+}
 
-  if(!document.getElementById("event").value.trim()){
-    status("Please enter the Event ID first.");
+async function startScanner(){
+  if(running) return;
+
+  if(!$("eventId").value.trim()){
+    show("Enter the Event ID first.","bad");
     return;
   }
 
-  if(typeof Html5Qrcode==="undefined"){
-    status("Scanner library did not load. Check your internet connection and reload.");
+  if(!validApiUrl()) return;
+
+  if(typeof Html5Qrcode === "undefined"){
+    show("SCANNER LIBRARY ERROR\nCheck your internet connection and reload this page.","bad");
     return;
   }
 
-  document.getElementById("start").disabled=true;
+  $("startBtn").disabled = true;
 
   try{
-    scanner=new Html5Qrcode("reader");
-    status("Requesting camera permission...");
+    scanner = new Html5Qrcode("reader");
+    show("REQUESTING CAMERA\nAllow camera access if your browser asks.");
 
-    await scanner.start(
-      {facingMode:"environment"},
-      {fps:10,qrbox:{width:220,height:220}},
-      async text=>{
-        status("QR CODE DETECTED:\n"+text+
-          "\n\nEvent: "+document.getElementById("event").value.trim()+
-          "\n\nCamera works. Google Sheets validation is not connected yet.");
-        await stopCamera();
-      },
-      ()=>{}
+    try{
+      await scanner.start(
+        {facingMode:"environment"},
+        {
+          fps:10,
+          qrbox:(width,height)=>{
+            const size=Math.max(150,Math.min(260,Math.floor(Math.min(width,height)*0.7)));
+            return {width:size,height:size};
+          },
+          aspectRatio:1
+        },
+        handleScan,
+        ()=>{}
+      );
+    }catch(firstError){
+      try{scanner.clear()}catch(e){}
+      scanner = new Html5Qrcode("reader");
+
+      const cameras = await Html5Qrcode.getCameras();
+      if(!cameras || !cameras.length) throw firstError;
+
+      const camera = cameras.find(c=>/back|rear|environment/i.test(c.label)) || cameras[0];
+
+      await scanner.start(
+        camera.id,
+        {fps:10,qrbox:{width:220,height:220}},
+        handleScan,
+        ()=>{}
+      );
+    }
+
+    running = true;
+    show("CAMERA READY\nPoint the camera at a boarding-pass QR code.","good");
+  }catch(error){
+    running = false;
+    try{if(scanner)scanner.clear()}catch(e){}
+    scanner = null;
+    $("startBtn").disabled = false;
+
+    show("CAMERA COULD NOT START\n"+(error.message||String(error))+
+      "\n\nOpen the HTTPS GitHub Pages site directly. Check browser camera permissions and close other apps using the camera.","bad");
+    console.error(error);
+  }
+}
+
+function validateBoarding(qrText){
+  const eventId = $("eventId").value.trim();
+  const callbackName = "akpcResponse_" + Date.now() + "_" + Math.floor(Math.random()*100000);
+  const script = document.createElement("script");
+  const params = new URLSearchParams({
+    api:"validateBoarding",
+    qr:qrText,
+    eventId:eventId,
+    callback:callbackName
+  });
+
+  let finished = false;
+
+  function cleanup(){
+    if(finished)return;
+    finished = true;
+    clearTimeout(timer);
+    script.remove();
+    try{delete window[callbackName]}catch(e){window[callbackName]=undefined}
+  }
+
+  const timer = setTimeout(()=>{
+    cleanup();
+    processing = false;
+    show("VALIDATION TIMEOUT\nNo response from Apps Script. Check the Web App URL and deployment.","bad");
+  },20000);
+
+  window[callbackName] = function(result){
+    cleanup();
+    const success = !!(result && result.success);
+    const duplicate = !!(result && result.duplicate);
+    const details = result && result.name ? "\nMember: "+result.name : "";
+    const sequence = result && result.sequence ? "\nSequence: "+result.sequence : "";
+    const time = result && (result.time || result.previousTime)
+      ? "\nTime: "+(result.time || result.previousTime) : "";
+
+    show(
+      (success ? "BOARDING SUCCESSFUL" : duplicate ? "DUPLICATE BOARDING" : "BOARDING REJECTED")+
+      "\n"+((result && result.message) || "No response message.")+
+      details+sequence+time,
+      success ? "good" : "bad"
     );
 
-    running=true;
-    status("Camera started. Point it at a QR code.");
-  }catch(error){
-    status("CAMERA ERROR:\n"+(error.message||error)+
-      "\n\nOpen the HTTPS website directly in Safari or Chrome and allow camera access.");
-    if(scanner){
-      try{scanner.clear()}catch(e){}
-      scanner=null;
-    }
-  }finally{
-    document.getElementById("start").disabled=false;
-  }
+    processing = false;
+    setTimeout(()=>{lastCode=""},2500);
+  };
+
+  script.onerror = function(){
+    cleanup();
+    processing = false;
+    show("CONNECTION ERROR\nCould not reach Apps Script. Check API_URL and redeploy the web app.","bad");
+  };
+
+  script.src = API_URL + "?" + params.toString();
+  document.head.appendChild(script);
 }
 
-async function stopCamera(){
+function handleScan(decodedText){
+  const qrText = String(decodedText||"").trim();
+  if(!qrText || processing || !running || qrText===lastCode)return;
+
+  processing = true;
+  lastCode = qrText;
+  show("QR CODE DETECTED\nValidating boarding pass...");
+
+  validateBoarding(qrText);
+}
+
+async function stopScanner(){
   if(scanner){
-    try{
-      if(running) await scanner.stop();
-    }catch(e){}
+    try{if(running)await scanner.stop()}catch(e){}
     try{scanner.clear()}catch(e){}
   }
-  scanner=null;
-  running=false;
-  document.getElementById("start").disabled=false;
-  status("Camera stopped. Press START CAMERA to try again.");
+
+  scanner = null;
+  running = false;
+  processing = false;
+  lastCode = "";
+  $("startBtn").disabled = false;
+  show("CAMERA STOPPED\nPress START CAMERA to scan again.");
 }
+
+window.addEventListener("pagehide",()=>{
+  if(scanner && running)scanner.stop().catch(()=>{});
+});
 </script>
 </body>
 </html>
