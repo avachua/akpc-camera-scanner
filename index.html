@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,15 +24,21 @@
 
     body {
       margin: 0;
+      padding: 22px;
       background: var(--bg);
       color: #f5f7fb;
       font: 16px/1.45 Arial, sans-serif;
-      padding: 22px;
     }
 
-    main { max-width: 760px; margin: auto; }
+    main {
+      max-width: 760px;
+      margin: auto;
+    }
 
-    .brand { text-align: center; margin-bottom: 22px; }
+    .brand {
+      text-align: center;
+      margin-bottom: 22px;
+    }
 
     .brand h1 {
       font-size: clamp(22px, 5vw, 34px);
@@ -39,7 +46,11 @@
       margin: 0 0 6px;
     }
 
-    .brand p { margin: 0; color: var(--gold); font-weight: bold; }
+    .brand p {
+      margin: 0;
+      color: var(--gold);
+      font-weight: bold;
+    }
 
     .panel {
       background: var(--panel);
@@ -49,8 +60,16 @@
       margin: 14px 0;
     }
 
-    .label { display: block; font-weight: bold; margin-bottom: 8px; }
-    .hint, .muted { color: var(--muted); font-size: 14px; }
+    .label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .hint, .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
 
     select, input, button {
       width: 100%;
@@ -81,7 +100,10 @@
       border: 1px solid #3b4d68;
     }
 
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
 
     #reader {
       width: 100%;
@@ -91,7 +113,9 @@
       border-radius: 12px;
     }
 
-    #reader video { border-radius: 12px; }
+    #reader video {
+      border-radius: 12px;
+    }
 
     .actions {
       display: grid;
@@ -107,9 +131,20 @@
       overflow-wrap: anywhere;
     }
 
-    .ok { background: #103b2d; border: 1px solid var(--green); }
-    .bad { background: #3a1821; border: 1px solid var(--red); }
-    .neutral { background: #1b2a40; border: 1px solid var(--line); }
+    .ok {
+      background: #103b2d;
+      border: 1px solid var(--green);
+    }
+
+    .bad {
+      background: #3a1821;
+      border: 1px solid var(--red);
+    }
+
+    .neutral {
+      background: #1b2a40;
+      border: 1px solid var(--line);
+    }
 
     .result strong {
       display: block;
@@ -124,7 +159,7 @@
       margin-top: 20px;
     }
 
-    @media (max-width: 480px) {
+    @media(max-width: 480px) {
       body { padding: 14px; }
       .panel { padding: 15px; }
       .actions { grid-template-columns: 1fr; }
@@ -134,6 +169,7 @@
 
 <body>
 <main>
+
   <header class="brand">
     <h1>ATENEO KNIGHTS PICKLEBALL CLUB</h1>
     <p>AKPC Boarding Gate QR Scanner</p>
@@ -141,16 +177,23 @@
 
   <section class="panel">
     <label class="label" for="eventSelect">LIVE EVENTS</label>
+
     <div class="hint">
-      Events are loaded from Google Sheets. Only ACTIVE events appear.
+      Events are loaded from the Google Sheets EVENTS tab.
+      Only events marked ACTIVE appear.
     </div>
 
     <select id="eventSelect">
       <option value="">Loading live events…</option>
     </select>
 
-    <button id="refreshBtn" class="secondary" type="button"
-      onclick="loadEvents()">REFRESH EVENTS</button>
+    <button
+      id="refreshBtn"
+      class="secondary"
+      type="button"
+      onclick="loadEvents()">
+      REFRESH EVENTS
+    </button>
 
     <div id="eventStatus" class="hint" role="status">
       Connecting to the event list…
@@ -169,8 +212,12 @@
         START CAMERA
       </button>
 
-      <button id="stopBtn" class="secondary" type="button"
-        onclick="stopCamera()" disabled>
+      <button
+        id="stopBtn"
+        class="secondary"
+        type="button"
+        onclick="stopCamera()"
+        disabled>
         STOP CAMERA
       </button>
     </div>
@@ -184,24 +231,30 @@
   </section>
 
   <section class="panel">
-    <label class="label" for="manualQr">Manual QR fallback</label>
+    <label class="label" for="manualQr">Manual QR Fallback</label>
 
     <div class="hint">
-      If the camera cannot read the pass, paste the QR contents here.
+      If the camera cannot read the pass, paste its QR contents here.
     </div>
 
-    <input id="manualQr" type="text" placeholder="Paste QR code contents">
+    <input
+      id="manualQr"
+      type="text"
+      placeholder="Paste QR code contents">
 
-    <button type="button" onclick="manualValidate()">VALIDATE PASS</button>
+    <button type="button" onclick="manualValidate()">
+      VALIDATE PASS
+    </button>
   </section>
 
   <div class="foot">
     AKPC Check-In &amp; Boarding • Official Scanner
   </div>
+
 </main>
 
 <script>
-  // YOUR DEPLOYED APPS SCRIPT WEB APP URL
+  // YOUR DEPLOYED APPS SCRIPT WEB APP
   const API_URL =
     "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
 
@@ -210,75 +263,104 @@
   let processingScan = false;
   let callbackCounter = 0;
   let audioContext = null;
+  let scanReleaseTimer = null;
 
   const $ = id => document.getElementById(id);
 
-  // AUDIO BEEPS
+  // ==========================================
+  // AIRLINE-STYLE SCANNER AUDIO
+  // ==========================================
+
   function prepareAudio() {
     try {
       const AudioContextClass =
         window.AudioContext || window.webkitAudioContext;
 
-      if (!AudioContextClass) return;
+      if (!AudioContextClass) return null;
 
       if (!audioContext) {
         audioContext = new AudioContextClass();
       }
 
       if (audioContext.state === "suspended") {
-        audioContext.resume();
+        audioContext.resume().catch(err =>
+          console.warn("Audio resume failed:", err)
+        );
       }
+
+      return audioContext;
     } catch (error) {
       console.warn("Audio unavailable:", error);
+      return null;
     }
   }
 
-  function playBeep(frequency, duration) {
-    try {
-      prepareAudio();
-      if (!audioContext) return;
+  function playTone(
+    frequency,
+    startDelay,
+    duration,
+    volume = 0.12
+  ) {
+    const ctx = prepareAudio();
+    if (!ctx) return;
 
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+    try {
+      const start = ctx.currentTime + startDelay;
+
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
 
       oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      gain.gain.value = 0.15;
+      oscillator.frequency.setValueAtTime(frequency, start);
 
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
+      gain.gain.setValueAtTime(0.001, start);
 
-      const now = audioContext.currentTime;
-
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        now + duration / 1000
+      gain.gain.linearRampToValueAtTime(
+        volume,
+        start + 0.012
       );
 
-      oscillator.start(now);
-      oscillator.stop(now + duration / 1000);
+      gain.gain.setValueAtTime(
+        volume,
+        start + duration * 0.65
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        start + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
     } catch (error) {
-      console.warn("Could not play beep:", error);
+      console.warn("Could not play tone:", error);
     }
   }
 
-  // BEEP 1: QR DETECTED
+  // QR detected: short electronic reader chirp
   function playScanBeep() {
-    playBeep(1000, 120);
+    playTone(1250, 0, 0.075, 0.09);
   }
 
-  // BEEP 2: GREEN / BOARDING ACCEPTED
+  // Accepted: two bright boarding-reader tones
   function playSuccessBeep() {
-    playBeep(1450, 250);
+    playTone(1040, 0, 0.09, 0.12);
+    playTone(1560, 0.105, 0.14, 0.12);
   }
 
-  // BEEP 2: RED / BOARDING REJECTED
+  // Rejected: lower, two-part warning tone
   function playErrorBeep() {
-    playBeep(300, 350);
+    playTone(420, 0, 0.18, 0.14);
+    playTone(330, 0.21, 0.24, 0.14);
   }
 
+  // ==========================================
   // RESULT DISPLAY
+  // ==========================================
+
   function showResult(ok, title, message) {
     const box = $("scanResult");
 
@@ -293,16 +375,21 @@
     );
   }
 
+  // ==========================================
+  // APPS SCRIPT JSONP CONNECTION
+  // ==========================================
+
   function apiReady() {
     return API_URL.startsWith("https://script.google.com/") &&
       API_URL.endsWith("/exec");
   }
 
-  // JSONP CONNECTION TO APPS SCRIPT
   function jsonp(params, timeoutMs = 18000) {
     return new Promise((resolve, reject) => {
       if (!apiReady()) {
-        reject(new Error("Invalid Apps Script /exec URL."));
+        reject(new Error(
+          "Check the Apps Script Web App URL in index.html."
+        ));
         return;
       }
 
@@ -314,7 +401,9 @@
       let timer;
 
       function cleanup() {
-        if (script.parentNode) script.parentNode.removeChild(script);
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
 
         try {
           delete window[callback];
@@ -327,16 +416,19 @@
 
       timer = setTimeout(() => {
         if (finished) return;
+
         finished = true;
         cleanup();
 
         reject(new Error(
-          "Apps Script did not respond. Check deployment access and Code.gs."
+          "Apps Script did not respond. Check deployment access, " +
+          "the /exec URL, and the JSONP handlers in Code.gs."
         ));
       }, timeoutMs);
 
       window[callback] = data => {
         if (finished) return;
+
         finished = true;
         cleanup();
         resolve(data);
@@ -349,11 +441,13 @@
 
       script.onerror = () => {
         if (finished) return;
+
         finished = true;
         cleanup();
 
         reject(new Error(
-          "Could not contact Apps Script. Check the Web App URL and permissions."
+          "Could not contact Apps Script. Check the Web App URL " +
+          "and deployment permissions."
         ));
       };
 
@@ -362,12 +456,16 @@
     });
   }
 
-  // LOAD ACTIVE EVENTS
+  // ==========================================
+  // LIVE EVENTS
+  // ==========================================
+
   async function loadEvents() {
     const select = $("eventSelect");
 
     $("refreshBtn").disabled = true;
-    $("eventStatus").textContent = "Loading events from Google Sheets…";
+    $("eventStatus").textContent =
+      "Loading events from Google Sheets…";
 
     select.replaceChildren(
       new Option("Loading live events…", "")
@@ -397,7 +495,7 @@
         select.add(new Option(label, event.id));
       });
 
-      if (events.some(event => String(event.id) === String(previous))) {
+      if (events.some(event => event.id === previous)) {
         select.value = previous;
       }
 
@@ -418,17 +516,17 @@
     }
   }
 
-  // START CAMERA
-  async function startCamera() {
-    prepareAudio();
+  // ==========================================
+  // CAMERA
+  // ==========================================
 
+  async function startCamera() {
     if (!apiReady()) {
       showResult(
         false,
         "SETUP ERROR",
-        "The Apps Script /exec URL is invalid."
+        "Check the Apps Script URL in index.html."
       );
-      playErrorBeep();
       return;
     }
 
@@ -438,7 +536,6 @@
         "NO EVENT SELECTED",
         "Select a live event before scanning."
       );
-      playErrorBeep();
       return;
     }
 
@@ -446,13 +543,15 @@
       showResult(
         false,
         "SCANNER UNAVAILABLE",
-        "The scanner library did not load. Check your internet connection."
+        "The camera library could not load. Check your internet connection."
       );
-      playErrorBeep();
       return;
     }
 
     if (scannerRunning) return;
+
+    // User interaction enables browser audio on supported devices.
+    prepareAudio();
 
     try {
       if (!qrScanner) {
@@ -467,15 +566,16 @@
           fps: 10,
           qrbox: { width: 230, height: 230 }
         },
-
-        // QR DETECTED: PLAY THE FIRST BEEP
         decodedText => {
           if (processingScan) return;
 
+          processingScan = true;
+
+          // First sound: QR has been detected.
           playScanBeep();
+
           validatePass(decodedText.trim());
         },
-
         () => {}
       );
 
@@ -493,58 +593,58 @@
         false,
         "CAMERA ERROR",
         (error.message || String(error)) +
-          " Check browser camera permission and use HTTPS."
+        " Check camera permission and use the HTTPS GitHub Pages URL."
       );
-
-      playErrorBeep();
 
     } finally {
       $("startBtn").disabled = false;
     }
   }
 
-  // STOP CAMERA
   async function stopCamera() {
     if (!qrScanner || !scannerRunning) return;
 
     try {
       await qrScanner.stop();
     } catch (error) {
-      console.warn(error);
+      console.warn("Camera stop issue:", error);
     }
 
     scannerRunning = false;
     $("stopBtn").disabled = true;
     $("startBtn").disabled = false;
-
-    showResult(
-      true,
-      "CAMERA STOPPED",
-      "Press START CAMERA when you are ready to scan again."
-    );
   }
 
+  // ==========================================
   // MANUAL QR ENTRY
-  function manualValidate() {
-    prepareAudio();
+  // ==========================================
 
+  function manualValidate() {
     const value = $("manualQr").value.trim();
 
     if (!value) {
       showResult(
         false,
         "MISSING QR CONTENT",
-        "Scan a QR code or paste its contents first."
+        "Paste the QR contents before validating."
       );
-
-      playErrorBeep();
       return;
     }
+
+    if (processingScan) return;
+
+    processingScan = true;
+
+    // Same scan confirmation for manual validation.
+    playScanBeep();
 
     validatePass(value);
   }
 
-  // VALIDATE BOARDING PASS
+  // ==========================================
+  // PASS VALIDATION
+  // ==========================================
+
   async function validatePass(qrText) {
     const eventId = $("eventSelect").value;
 
@@ -555,13 +655,9 @@
         "Select a live event before scanning."
       );
 
-      playErrorBeep();
+      releaseScanLock();
       return;
     }
-
-    if (processingScan) return;
-
-    processingScan = true;
 
     showResult(
       true,
@@ -588,28 +684,36 @@
         result.valid === true ||
         result.status === "BOARDED";
 
+      const message =
+        result.message ||
+        result.error ||
+        (success
+          ? "Boarding pass accepted."
+          : "Boarding pass rejected.");
+
+      const details =
+        `${result.name ? result.name + " — " : ""}${message}`;
+
       if (success) {
-        // SECOND BEEP: GREEN / ACCEPTED
+        // Second sound: accepted boarding pass.
         playSuccessBeep();
 
         showResult(
           true,
           "BOARDING ACCEPTED",
-          `${result.name ? result.name + " — " : ""}` +
-          `${result.message || "Pass accepted."}`
+          details
         );
 
         $("manualQr").value = "";
 
       } else {
-        // SECOND BEEP: RED / REJECTED
+        // Second sound: rejected or invalid pass.
         playErrorBeep();
 
         showResult(
           false,
           result.duplicate ? "ALREADY BOARDED" : "BOARDING REJECTED",
-          `${result.name ? result.name + " — " : ""}` +
-          `${result.message || "Pass rejected."}`
+          details
         );
       }
 
@@ -623,12 +727,22 @@
       );
 
     } finally {
-      // Briefly prevent the same QR from being processed repeatedly.
-      setTimeout(() => {
-        processingScan = false;
-      }, 1200);
+      releaseScanLock();
     }
   }
+
+  function releaseScanLock() {
+    clearTimeout(scanReleaseTimer);
+
+    // Prevent the same QR from triggering repeatedly.
+    scanReleaseTimer = setTimeout(() => {
+      processingScan = false;
+    }, 900);
+  }
+
+  // ==========================================
+  // EVENT SELECTION
+  // ==========================================
 
   $("eventSelect").addEventListener("change", () => {
     if ($("eventSelect").value) {
@@ -640,8 +754,9 @@
     }
   });
 
-  // LOAD EVENTS WHEN THE PAGE OPENS
+  // Load active events when the page opens.
   loadEvents();
 </script>
+
 </body>
 </html>
