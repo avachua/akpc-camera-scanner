@@ -357,7 +357,7 @@
   // Keep this URL matched to your deployed Apps Script web app.
   const API_URL =
     "https://script.google.com/a/macros/addu.edu.ph/s/AKfycbwZOYoWt__IVF8NXy_ZSWTohlqWg5yKbHxZZP1Lv2Lz-7mTt_ab1fjdRaMBDmKE5yH8Ng/exec";
-  const EXPECTED_API_VERSION = "AKPC_BOARDING_NAME_SEQ_QR_2026_10_23_4";
+  const EXPECTED_API_VERSION = "AKPC_BOARDING_DENIED_REASON_2026_10_24_1";
 
   const $ = id => document.getElementById(id);
 
@@ -843,6 +843,20 @@
           "error"
         );
         console.error("AKPC backend version mismatch:", result);
+        return;
+      }
+
+      const deniedStatus = String(result.status || "").toUpperCase();
+
+      // Show denied boarding separately, with only the original reason.
+      if (deniedStatus === "DENIED_BOARDING") {
+        playRejectedSound();
+        showStatus(
+          "DENIED BOARDING",
+          String(result.reason || "No reason recorded.").trim(),
+          "error"
+        );
+        $("qrInput").value = "";
         return;
       }
 
