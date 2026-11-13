@@ -581,12 +581,9 @@
       events.forEach(event => {
         const id = valueOf(event, ["eventId", "eventID", "id", "Event ID"]);
         const name = valueOf(event, ["eventName", "name", "Event Name"]);
-        const status = String(
-          valueOf(event, ["status", "Status"]) || ""
-        ).toLowerCase();
-
-        if (!id || status === "inactive" || status === "cancelled" ||
-            status === "canceled" || status === "deleted") return;
+        // Show every event in the Boarding Gate dropdown regardless of its
+        // toggle/status. The event toggle must not filter this list.
+        if (!id) return;
 
         const option = document.createElement("option");
         option.value = id;
@@ -595,7 +592,7 @@
       });
 
       if (select.options.length === 1) {
-        select.options[0].textContent = "No active events available";
+        select.options[0].textContent = "No events available";
       }
     } catch (error) {
       select.innerHTML = '<option value="">Could not load events</option>';
